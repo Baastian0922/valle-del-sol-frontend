@@ -1,16 +1,33 @@
-# React + Vite
+🚨 Municipalidad Valle del Sol - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Este repositorio contiene la interfaz web de la plataforma para la gestión y reporte de incendios forestales y urbanos en la comuna de Valle del Sol. La aplicación permite a los ciudadanos y autoridades visualizar focos de incendio en tiempo real y gestionar alertas de manera eficiente.  
 
-Currently, two official plugins are available:
+🛠️ Tecnologías y HerramientasFramework: React.js con Vite para una compilación y despliegue de alto rendimiento.Estilos: Tailwind CSS para un diseño responsivo y moderno.Comunicación API: Axios para el consumo de microservicios a través del BFF.Mapa: Integración con Google Maps API para geolocalización en tiempo real.  Calidad de Código: Configuración de ESLint para mantener estándares de desarrollo profesional.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+📁 Estructura del ProyectoSegún el estándar de este repositorio:/public: Activos estáticos, iconos de emergencia y recursos del sistema./src: Código fuente principal (componentes, servicios de conexión con Axios y lógica de mapas).tailwind.config.js: Definiciones de diseño y personalización visual.package.json: Lista de dependencias y scripts de ejecución (NPM).
 
-## React Compiler
+🚀 Instrucciones de Instalación y Uso1. Requisitos PreviosTener instalado Node.js (v18 o superior).Contar con una Google Maps API Key válida.  
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+2. Configuración Clonar el repositorio y entrar a la carpeta:
+git clone. "https://github.com/Baastian0922/valle-del-sol-frontend.git"
+Entrar a la carpeta: cd valle-del-sol-frontend
 
-## Expanding the ESLint configuration
+3. Instalación de Dependencias
+Ejecutar el comando de NPM para descargar los paquetes necesarios: npm install
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+4. Ejecución en Desarrollo
+Para levantar el servidor local con Vite: NPM run dev
+La aplicación estará disponible en http://localhost:5173.5.
+
+5. Construcción para Producción
+Para generar los archivos listos para despliegue: NPM run build
+
+📋 Funcionalidades Implementadas 
+Reporte Ciudadano: Formulario para el ingreso de alertas con descripción y multimedia. 
+Mapa Interactivo: Visualización de focos activos mediante "pins" geográficos. 
+Dashboard de Gestión: Panel para visualizar el estado de las emergencias (Activo, Controlado, Cerrado).  
+
+Asignatura: Full Stack III   
+Integrantes: Bastián Concha - Matias Neira   
+Profesor: Johnnathan Rene Cubillos Flores   
+Grupo: 10 
