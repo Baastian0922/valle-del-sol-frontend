@@ -18,7 +18,7 @@ export default function StaffDashboard() {
   // Estados generales
   const [enviando, setEnviando] = useState(false);
   const [mostrarModal, setMostrarModal] = useState(false);
-  const [modoLectura, setModoLectura] = useState(false);
+  const [modoLectura, setModoLectura] = useState(true);
   const [historial, setHistorial] = useState([]);
   const [archivo, setArchivo] = useState(null);
   const [selectedCoords, setSelectedCoords] = useState(null);
@@ -32,17 +32,25 @@ export default function StaffDashboard() {
   }, [user]);
 
   const cargarHistorial = async () => {
+    const DEFAULT_ALERTAS = [
+      { id: 101, titulo: "Incendio Forestal Sector Alto Sol", descripcion: "Fuego descontrolado cerca de matorrales en pendiente pronunciada.", latitud: -33.4320, longitud: -70.6410, estado: 'PENDIENTE', fecha: new Date(Date.now() - 3600000).toLocaleString() },
+      { id: 102, titulo: "Columna de Humo en Quebrada", descripcion: "Comunidad reporta avistamiento de humo gris denso en la quebrada principal.", latitud: -33.4490, longitud: -70.6590, estado: 'EN_PROCESO', fecha: new Date(Date.now() - 7200000).toLocaleString() },
+      { id: 103, titulo: "Foco Pastizales Bajo Control", descripcion: "Foco controlado y extinguido gracias al rápido actuar de brigadistas.", latitud: -33.4210, longitud: -70.6690, estado: 'RESUELTO', fecha: new Date(Date.now() - 86400000).toLocaleString() }
+    ];
+
     try {
       const response = await api.get('/sincronizar');
+      localStorage.setItem('valle_sol_reportes', JSON.stringify(response.data));
       setHistorial(response.data);
     } catch (err) {
-      console.warn("Backend offline o error al sincronizar. Cargando mock de alertas...");
-      const MOCK_ALERTAS = [
-        { id: 101, titulo: "Incendio Forestal Sector Alto Sol", descripcion: "Fuego descontrolado cerca de matorrales en pendiente pronunciada.", latitud: -33.4320, longitud: -70.6410, estado: 'PENDIENTE', fecha: new Date(Date.now() - 3600000).toLocaleString() },
-        { id: 102, titulo: "Columna de Humo en Quebrada", descripcion: "Comunidad reporta avistamiento de humo gris denso en la quebrada principal.", latitud: -33.4490, longitud: -70.6590, estado: 'EN_PROCESO', fecha: new Date(Date.now() - 7200000).toLocaleString() },
-        { id: 103, titulo: "Foco Pastizales Bajo Control", descripcion: "Foco controlado y extinguido gracias al rápido actuar de brigadistas.", latitud: -33.4210, longitud: -70.6690, estado: 'RESUELTO', fecha: new Date(Date.now() - 86400000).toLocaleString() },
-      ];
-      setHistorial(MOCK_ALERTAS);
+      console.warn("Backend offline o error al sincronizar. Cargando desde LocalStorage...");
+      const stored = localStorage.getItem('valle_sol_reportes');
+      let reportesList = stored ? JSON.parse(stored) : null;
+      if (!reportesList) {
+        reportesList = DEFAULT_ALERTAS;
+        localStorage.setItem('valle_sol_reportes', JSON.stringify(DEFAULT_ALERTAS));
+      }
+      setHistorial(reportesList);
     }
   };
 
@@ -61,10 +69,12 @@ export default function StaffDashboard() {
     setMostrarModal(true);
   };
 
-  const prepararNuevoReporte = () => {
+  const prepararNuevoReporte = (lat = -33.4372, lng = -70.6506) => {
+    const finalLat = typeof lat === 'number' && !isNaN(lat) ? lat : -33.4372;
+    const finalLng = typeof lng === 'number' && !isNaN(lng) ? lng : -70.6506;
     setModoLectura(false);
     setDatosReporte({
-      id: null, titulo: '', descripcion: '', latitud: -33.4372, longitud: -70.6506,
+      id: null, titulo: '', descripcion: '', latitud: finalLat, longitud: finalLng,
       estado: 'PENDIENTE', fecha: new Date().toLocaleString()
     });
     setMostrarModal(true);
@@ -80,11 +90,23 @@ export default function StaffDashboard() {
     return () => clearInterval(timer);
   }, [mostrarModal, modoLectura]);
 
+  useEffect(() => {
+    if (!mostrarModal) {
+      setModoLectura(true);
+    }
+  }, [mostrarModal]);
+
   const handleChange = (e) => setDatosReporte({ ...datosReporte, [e.target.name]: e.target.value });
 
   const handleSubmitReporte = async (e) => {
     e.preventDefault();
     setEnviando(true);
+
+    const DEFAULT_ALERTAS = [
+      { id: 101, titulo: "Incendio Forestal Sector Alto Sol", descripcion: "Fuego descontrolado cerca de matorrales en pendiente pronunciada.", latitud: -33.4320, longitud: -70.6410, estado: 'PENDIENTE', fecha: new Date(Date.now() - 3600000).toLocaleString() },
+      { id: 102, titulo: "Columna de Humo en Quebrada", descripcion: "Comunidad reporta avistamiento de humo gris denso en la quebrada principal.", latitud: -33.4490, longitud: -70.6590, estado: 'EN_PROCESO', fecha: new Date(Date.now() - 7200000).toLocaleString() },
+      { id: 103, titulo: "Foco Pastizales Bajo Control", descripcion: "Foco controlado y extinguido gracias al rápido actuar de brigadistas.", latitud: -33.4210, longitud: -70.6690, estado: 'RESUELTO', fecha: new Date(Date.now() - 86400000).toLocaleString() }
+    ];
 
     if (modoLectura) {
       setMostrarModal(false);
@@ -107,6 +129,12 @@ export default function StaffDashboard() {
     } catch (err) {
       console.warn("Backend offline. Creando reporte en sesión local...");
     }
+
+    // Guardar en localStorage para persistencia offline
+    const stored = localStorage.getItem('valle_sol_reportes');
+    let reportesList = stored ? JSON.parse(stored) : DEFAULT_ALERTAS;
+    reportesList = [payload, ...reportesList];
+    localStorage.setItem('valle_sol_reportes', JSON.stringify(reportesList));
 
     setHistorial(prev => [payload, ...prev]);
     alert("Incendio reportado correctamente.");

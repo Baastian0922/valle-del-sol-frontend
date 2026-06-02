@@ -1,9 +1,9 @@
 import React from 'react';
-import { X, Activity, Calendar, Send, Trash2, Save, CheckCircle2 } from 'lucide-react';
+import { X, Activity, Calendar, Send, Trash2, Save, CheckCircle2, Navigation } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const ReporteModal = ({ 
-  mostrar, setMostrar, modoLectura, datos, handleChange, handleSubmit, enviando, archivo, setArchivo, onDelete, onFinalizeEmergency
+  mostrar, setMostrar, modoLectura, datos, handleChange, handleSubmit, enviando, archivo, setArchivo, onDelete, onFinalizeEmergency, onActualizarEstado, onAbrirGPS
 }) => {
   const { user } = useAuth();
   
@@ -80,14 +80,63 @@ const ReporteModal = ({
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-slate-950/50 border border-slate-800/50 p-3 rounded-2xl italic font-mono text-emerald-500 text-xs text-center font-bold">Lat: {datos.latitud?.toFixed(4)}</div>
-            <div className="bg-slate-950/50 border border-slate-800/50 p-3 rounded-2xl italic font-mono text-emerald-500 text-xs text-center font-bold">Lng: {datos.longitud?.toFixed(4)}</div>
+            <div className="bg-slate-950/50 border border-slate-800/50 p-3 rounded-2xl italic font-mono text-emerald-500 text-xs text-center font-bold">Lat: {Number(datos.latitud || 0).toFixed(4)}</div>
+            <div className="bg-slate-950/50 border border-slate-800/50 p-3 rounded-2xl italic font-mono text-emerald-500 text-xs text-center font-bold">Lng: {Number(datos.longitud || 0).toFixed(4)}</div>
           </div>
 
           {!modoLectura && (
             <div className="bg-slate-950 border-2 border-dashed border-slate-800 rounded-2xl p-4 text-center relative cursor-pointer animate-pulse">
               <input type="file" onChange={(e) => setArchivo(e.target.files[0])} className="absolute inset-0 opacity-0 cursor-pointer" />
               <p className="text-[9px] font-black uppercase text-slate-500">{archivo ? archivo.name : "Subir Multimedia"}</p>
+            </div>
+          )}
+
+          {(user?.role === 'EMERGENCY_ENTITY' || user?.role === 'ADMIN') && modoLectura && (
+            <div className="w-full bg-slate-950 p-4 border border-blue-500/20 rounded-2xl space-y-3">
+              <p className="text-[10px] font-black uppercase text-blue-400 tracking-wider italic">Control de Despliegue de Emergencia</p>
+              <div className="grid grid-cols-1 gap-2">
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    onActualizarEstado(datos.id, `EN CAMINO (${user.fullName})`);
+                  }}
+                  className="w-full bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-600/30 font-black py-2.5 rounded-xl uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2"
+                >
+                  <Navigation size={12} className="rotate-45" /> En camino la unidad
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    onActualizarEstado(datos.id, 'CONTROLADO');
+                  }}
+                  className="w-full bg-amber-600/20 hover:bg-amber-600 text-amber-400 hover:text-white border border-amber-600/30 font-black py-2.5 rounded-xl uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2"
+                >
+                  <Activity size={12} /> Incendio controlado
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    if (confirm("¿Confirmas el cierre definitivo de esta alerta de incendio?")) {
+                      onActualizarEstado(datos.id, 'RESUELTO');
+                    }
+                  }}
+                  className="w-full bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-600/30 font-black py-2.5 rounded-xl uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 size={12} /> Incendio cerrado
+                </button>
+                
+                {onAbrirGPS && (
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      onAbrirGPS(datos.latitud, datos.longitud);
+                    }}
+                    className="w-full mt-1 bg-blue-600 hover:bg-blue-500 text-white font-black py-3 rounded-xl uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 animate-pulse"
+                  >
+                    <Navigation size={12} /> Abrir Ruta GPS más Cercana
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -105,22 +154,6 @@ const ReporteModal = ({
                 title="Eliminar Reporte"
               >
                 <Trash2 size={18} />
-              </button>
-            )}
-
-            {user?.role === 'EMERGENCY_ENTITY' && modoLectura && datos.estado !== 'RESUELTO' && (
-              <button 
-                type="button" 
-                onClick={() => {
-                  if (confirm("¿Confirmas la finalización y cierre de esta emergencia forestal?")) {
-                    onFinalizeEmergency(datos.id);
-                    setMostrar(false);
-                  }
-                }}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-6 py-4 rounded-2xl uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-600/20"
-                title="Finalizar Emergencia"
-              >
-                <CheckCircle2 size={16} /> Finalizar Emergencia
               </button>
             )}
 
