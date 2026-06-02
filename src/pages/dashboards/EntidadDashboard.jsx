@@ -9,7 +9,8 @@ import ReporteModal from '../../components/ReporteModal';
 import HistorySidebar from '../../components/HistorySidebar';
 import EmergencyMap from '../../components/EmergencyMap';
 
-import { Flame, ShieldAlert, Users, TrendingUp } from 'lucide-react';
+import { Flame, ShieldAlert, Users, TrendingUp, CheckCircle, AlertCircle, X } from 'lucide-react';
+
 
 export default function EntidadDashboard() {
   const { user } = useAuth();
@@ -17,6 +18,20 @@ export default function EntidadDashboard() {
 
   // Estados generales
   const [enviando, setEnviando] = useState(false);
+  const [toast, setToast] = useState({ mostrar: false, mensaje: '', tipo: 'success' });
+  const [toastTimeoutId, setToastTimeoutId] = useState(null);
+
+  const mostrarToast = (mensaje, tipo = 'success') => {
+    if (toastTimeoutId) {
+      clearTimeout(toastTimeoutId);
+    }
+    setToast({ mostrar: true, mensaje, tipo });
+    const id = setTimeout(() => {
+      setToast(prev => ({ ...prev, mostrar: false }));
+    }, 4000);
+    setToastTimeoutId(id);
+  };
+
   const [mostrarModal, setMostrarModal] = useState(false);
   const [modoLectura, setModoLectura] = useState(false);
   const [historial, setHistorial] = useState([]);
@@ -93,11 +108,12 @@ export default function EntidadDashboard() {
     if (nuevoEstado === 'RESUELTO') {
       setHistorial(prev => prev.filter(r => r.id !== id));
       setSelectedCoords(null);
-      alert("Emergencia finalizada y cerrada con éxito.");
+      mostrarToast("Emergencia finalizada y cerrada con éxito.", "success");
     } else {
       setHistorial(prev => prev.map(r => r.id === id ? { ...r, estado: nuevoEstado } : r));
-      alert(`Estado de la emergencia actualizado a: ${nuevoEstado}`);
+      mostrarToast(`Estado de la emergencia actualizado a: ${nuevoEstado}`, "info");
     }
+
   };
 
   const statsData = [
@@ -168,6 +184,24 @@ export default function EntidadDashboard() {
           </div>
         </section>
       </main>
+
+      {toast.mostrar && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-900/95 backdrop-blur-md border border-slate-700/50 text-slate-100 px-6 py-4 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] max-w-md transition-all duration-300 animate-slide-up">
+          {toast.tipo === 'success' && <CheckCircle className="text-emerald-400 w-5 h-5 flex-shrink-0 animate-pulse" />}
+          {toast.tipo === 'warning' && <AlertCircle className="text-amber-400 w-5 h-5 flex-shrink-0" />}
+          {toast.tipo === 'info' && <AlertCircle className="text-blue-400 w-5 h-5 flex-shrink-0" />}
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Notificación</p>
+            <p className="text-xs font-bold text-white mt-0.5">{toast.mensaje}</p>
+          </div>
+          <button 
+            onClick={() => setToast(prev => ({ ...prev, mostrar: false }))} 
+            className="text-slate-400 hover:text-white transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
