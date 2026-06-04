@@ -1,8 +1,8 @@
 import React from 'react';
-import { Flame, Map as MapIcon, RotateCcw, LogOut, Users, Shield, ShieldAlert, HeartHandshake } from 'lucide-react';
+import { Flame, Map as MapIcon, RotateCcw, LogOut, Users, Shield, ShieldAlert, HeartHandshake, FileText } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const Sidebar = ({ onRefresh, onShowUsers }) => {
+const Sidebar = ({ onRefresh, onShowUsers, vistaActiva = 'monitoreo', setVistaActiva }) => {
   const { user, logout } = useAuth();
 
   const getRoleIcon = (role) => {
@@ -37,10 +37,23 @@ const Sidebar = ({ onRefresh, onShowUsers }) => {
       </div>
 
       <nav className="flex-1 p-2 md:p-4 space-y-2 mt-2">
-        <button className="w-full flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-red-600/20 text-xs uppercase tracking-wider transition-all">
+        <button 
+          onClick={() => setVistaActiva && setVistaActiva('monitoreo')}
+          className={`w-full flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${vistaActiva === 'monitoreo' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
+        >
           <MapIcon size={18} className="shrink-0" />
           <span className="hidden md:inline">Monitoreo</span>
         </button>
+
+        {user?.role === 'ADMIN' && (
+          <button 
+            onClick={() => setVistaActiva && setVistaActiva('historial')}
+            className={`w-full flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${vistaActiva === 'historial' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
+          >
+            <FileText size={18} className="shrink-0" />
+            <span className="hidden md:inline">Reporte Histórico</span>
+          </button>
+        )}
 
         {user?.role === 'ADMIN' && (
           <button onClick={onShowUsers} className="w-full flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl font-bold transition-all text-xs uppercase tracking-wider">
@@ -62,6 +75,7 @@ const Sidebar = ({ onRefresh, onShowUsers }) => {
          </button>
       </div>
     </aside>
+
   );
 };
 

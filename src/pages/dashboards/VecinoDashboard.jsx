@@ -8,7 +8,8 @@ import ReporteModal from '../../components/ReporteModal';
 import HistorySidebar from '../../components/HistorySidebar';
 import EmergencyMap from '../../components/EmergencyMap';
 
-import { Heart } from 'lucide-react';
+import { Heart, CheckCircle, AlertCircle, X } from 'lucide-react';
+
 
 export default function VecinoDashboard() {
   const { user } = useAuth();
@@ -16,6 +17,20 @@ export default function VecinoDashboard() {
 
   // Estados generales
   const [enviando, setEnviando] = useState(false);
+  const [toast, setToast] = useState({ mostrar: false, mensaje: '', tipo: 'success' });
+  const [toastTimeoutId, setToastTimeoutId] = useState(null);
+
+  const mostrarToast = (mensaje, tipo = 'success') => {
+    if (toastTimeoutId) {
+      clearTimeout(toastTimeoutId);
+    }
+    setToast({ mostrar: true, mensaje, tipo });
+    const id = setTimeout(() => {
+      setToast(prev => ({ ...prev, mostrar: false }));
+    }, 4000);
+    setToastTimeoutId(id);
+  };
+
   const [mostrarModal, setMostrarModal] = useState(false);
   const [modoLectura, setModoLectura] = useState(true);
   const [historial, setHistorial] = useState([]);
@@ -103,16 +118,18 @@ export default function VecinoDashboard() {
 
     const nuevoId = Math.floor(Math.random() * 1000) + 10;
     const payload = {
-      id: nuevoId,
       ...datosReporte,
+      id: nuevoId,
       latitud: parseFloat(datosReporte.latitud),
       longitud: parseFloat(datosReporte.longitud),
       fecha: new Date().toLocaleString()
     };
 
+
+    let syncExitoso = false;
     try {
       await api.post('/crear', payload);
-      alert("Reporte sincronizado con éxito.");
+      syncExitoso = true;
     } catch (err) {
       console.warn("Backend offline. Creando reporte en sesión local...");
     }
@@ -129,10 +146,17 @@ export default function VecinoDashboard() {
     localStorage.setItem('valle_sol_reportes', JSON.stringify(reportesList));
 
     setHistorial(prev => [payload, ...prev]);
-    alert("Incendio reportado correctamente.");
+
+    if (syncExitoso) {
+      mostrarToast("Reporte de incendio registrado y procesado con éxito.", "success");
+    } else {
+      mostrarToast("Reporte registrado localmente (Offline).", "warning");
+    }
+
     setMostrarModal(false);
     setEnviando(false);
   };
+
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-200 font-sans">
@@ -204,6 +228,24 @@ export default function VecinoDashboard() {
           </div>
         </section>
       </main>
+
+      {toast.mostrar && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-900/95 backdrop-blur-md border border-slate-700/50 text-slate-100 px-6 py-4 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] max-w-md transition-all duration-300 animate-slide-up">
+          {toast.tipo === 'success' && <CheckCircle className="text-emerald-400 w-5 h-5 flex-shrink-0 animate-pulse" />}
+          {toast.tipo === 'warning' && <AlertCircle className="text-amber-400 w-5 h-5 flex-shrink-0" />}
+          {toast.tipo === 'info' && <AlertCircle className="text-blue-400 w-5 h-5 flex-shrink-0" />}
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Notificación</p>
+            <p className="text-xs font-bold text-white mt-0.5">{toast.mensaje}</p>
+          </div>
+          <button 
+            onClick={() => setToast(prev => ({ ...prev, mostrar: false }))} 
+            className="text-slate-400 hover:text-white transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

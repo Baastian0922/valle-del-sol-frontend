@@ -9,8 +9,11 @@ import ReporteModal from '../../components/ReporteModal';
 import HistorySidebar from '../../components/HistorySidebar';
 import UserManagementModal from '../../components/UserManagementModal';
 import EmergencyMap from '../../components/EmergencyMap';
+import SavedReportsHistory from '../../components/SavedReportsHistory';
 
-import { Flame, ShieldAlert, Users, TrendingUp } from 'lucide-react';
+
+import { Flame, ShieldAlert, Users, TrendingUp, CheckCircle, AlertCircle, X } from 'lucide-react';
+
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -24,6 +27,23 @@ export default function AdminDashboard() {
   const [historial, setHistorial] = useState([]);
   const [archivo, setArchivo] = useState(null);
   const [selectedCoords, setSelectedCoords] = useState(null);
+  const [tabHistorial, setTabHistorial] = useState('activas'); // 'activas' | 'controlados'
+  const [toast, setToast] = useState({ mostrar: false, mensaje: '', tipo: 'success' });
+  const [toastTimeoutId, setToastTimeoutId] = useState(null);
+  const [vistaActiva, setVistaActiva] = useState('monitoreo'); // 'monitoreo' | 'historial'
+
+
+  const mostrarToast = (mensaje, tipo = 'success') => {
+    if (toastTimeoutId) {
+      clearTimeout(toastTimeoutId);
+    }
+    setToast({ mostrar: true, mensaje, tipo });
+    const id = setTimeout(() => {
+      setToast(prev => ({ ...prev, mostrar: false }));
+    }, 4000);
+    setToastTimeoutId(id);
+  };
+
 
   const [datosReporte, setDatosReporte] = useState({
     id: null, titulo: '', descripcion: '', latitud: -33.4372, longitud: -70.6506, estado: 'PENDIENTE', fecha: ''
@@ -124,7 +144,7 @@ export default function AdminDashboard() {
       localStorage.setItem('valle_sol_reportes', JSON.stringify(list));
 
       setHistorial(prev => prev.map(r => r.id === datosReporte.id ? { ...datosReporte } : r));
-      alert("Reporte actualizado correctamente");
+      mostrarToast("Reporte actualizado correctamente", "success");
       setMostrarModal(false);
       setEnviando(false);
       return;
@@ -138,16 +158,18 @@ export default function AdminDashboard() {
 
     const nuevoId = Math.floor(Math.random() * 1000) + 10;
     const payload = {
-      id: nuevoId,
       ...datosReporte,
+      id: nuevoId,
       latitud: parseFloat(datosReporte.latitud),
       longitud: parseFloat(datosReporte.longitud),
       fecha: new Date().toLocaleString()
     };
 
+
+    let syncExitoso = false;
     try {
       await api.post('/crear', payload);
-      alert("Reporte sincronizado con éxito.");
+      syncExitoso = true;
     } catch (err) {
       console.warn("Backend offline. Creando reporte en sesión local...");
     }
@@ -159,7 +181,11 @@ export default function AdminDashboard() {
     localStorage.setItem('valle_sol_reportes', JSON.stringify(reportesList));
 
     setHistorial(prev => [payload, ...prev]);
-    alert("Incendio reportado correctamente.");
+    if (syncExitoso) {
+      mostrarToast("Incendio reportado y sincronizado con éxito.", "success");
+    } else {
+      mostrarToast("Reporte guardado localmente (Offline).", "warning");
+    }
     setMostrarModal(false);
     setEnviando(false);
   };
@@ -181,7 +207,7 @@ export default function AdminDashboard() {
 
     setHistorial(prev => prev.filter(r => r.id !== id));
     setSelectedCoords(null);
-    alert("Reporte eliminado de la base de datos.");
+    mostrarToast("Reporte eliminado con éxito.", "success");
   };
 
   const handleFinalizarEmergencia = async (id) => {
@@ -201,7 +227,7 @@ export default function AdminDashboard() {
 
     setHistorial(prev => prev.map(r => r.id === id ? { ...r, estado: 'RESUELTO' } : r));
     setSelectedCoords(null);
-    alert("Emergencia finalizada con éxito.");
+    mostrarToast("Emergencia finalizada con éxito.", "success");
   };
 
   const handleAbrirGPS = (lat, lng) => {
@@ -226,12 +252,13 @@ export default function AdminDashboard() {
     if (nuevoEstado === 'RESUELTO') {
       setHistorial(prev => prev.map(r => r.id === id ? { ...r, estado: nuevoEstado } : r));
       setSelectedCoords(null);
-      alert("Emergencia finalizada y cerrada con éxito.");
+      mostrarToast("Emergencia finalizada y cerrada con éxito.", "success");
     } else {
       setHistorial(prev => prev.map(r => r.id === id ? { ...r, estado: nuevoEstado } : r));
-      alert(`Estado de la emergencia actualizado a: ${nuevoEstado}`);
+      mostrarToast(`Estado de la emergencia actualizado a: ${nuevoEstado}`, "info");
     }
   };
+
 
   const statsData = [
     { label: "Alertas Activas", value: historial.filter(r => r.estado !== 'RESUELTO').length, icon: <Flame size={20}/>, color: "text-red-500", bg: "bg-red-500/10" },
@@ -258,16 +285,23 @@ export default function AdminDashboard() {
         setMostrar={setMostrarUserMgmt}
       />
 
-      <Sidebar onRefresh={cargarHistorial} onShowUsers={() => setMostrarUserMgmt(true)} />
+      <Sidebar 
+        onRefresh={cargarHistorial} 
+        onShowUsers={() => setMostrarUserMgmt(true)} 
+        vistaActiva={vistaActiva}
+        setVistaActiva={setVistaActiva}
+      />
+
 
       <main className="flex-1 ml-16 md:ml-64 p-4 md:p-8 overflow-y-auto transition-all duration-300">
         <header className="flex justify-between items-center mb-8">
+
           <div>
             <h1 className="text-3xl font-black text-white uppercase tracking-tight italic">
-              Consola de Administración
+              {vistaActiva === 'monitoreo' ? 'Consola de Administración' : 'Reporte Histórico'}
             </h1>
             <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1 italic">
-              Acceso y control total de emergencias forestales
+              {vistaActiva === 'monitoreo' ? 'Acceso y control total de emergencias forestales' : 'Auditoría y registro completo de alertas en la comuna'}
             </p>
           </div>
 
@@ -285,30 +319,82 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {statsData.map((stat, i) => (
-            <StatCard key={i} {...stat} />
-          ))}
-        </section>
+        {vistaActiva === 'monitoreo' ? (
+          <>
+            <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {statsData.map((stat, i) => (
+                <StatCard key={i} {...stat} />
+              ))}
+            </section>
 
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <EmergencyMap 
-            user={user}
-            historial={historial}
-            selectedCoords={selectedCoords}
-            setSelectedCoords={setSelectedCoords}
-            datosReporte={datosReporte}
-            setDatosReporte={setDatosReporte}
-            modoLectura={modoLectura}
-            abrirDetalleReporte={abrirDetalleReporte}
-            prepararNuevoReporte={prepararNuevoReporte}
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <EmergencyMap 
+                user={user}
+                historial={historial}
+                selectedCoords={selectedCoords}
+                setSelectedCoords={setSelectedCoords}
+                datosReporte={datosReporte}
+                setDatosReporte={setDatosReporte}
+                modoLectura={modoLectura}
+                abrirDetalleReporte={abrirDetalleReporte}
+                prepararNuevoReporte={prepararNuevoReporte}
+              />
+
+              <div>
+                <div className="flex gap-2 mb-4 bg-slate-900 p-1.5 rounded-2xl border border-slate-800">
+                  <button 
+                    onClick={() => setTabHistorial('activas')}
+                    className={`flex-grow py-2 rounded-xl text-[10px] font-black uppercase tracking-wider italic transition-all ${tabHistorial === 'activas' ? 'bg-red-600 text-white shadow-lg shadow-red-600/10' : 'text-slate-400 hover:text-white bg-slate-950/40'}`}
+                  >
+                    Alertas Activas ({historial.filter(r => r.estado !== 'CONTROLADO' && r.estado !== 'RESUELTO').length})
+                  </button>
+                  <button 
+                    onClick={() => setTabHistorial('controlados')}
+                    className={`flex-grow py-2 rounded-xl text-[10px] font-black uppercase tracking-wider italic transition-all ${tabHistorial === 'controlados' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/10' : 'text-slate-400 hover:text-white bg-slate-950/40'}`}
+                  >
+                    Controlados / Cerrados ({historial.filter(r => r.estado === 'CONTROLADO' || r.estado === 'RESUELTO').length})
+                  </button>
+                </div>
+                
+                <HistorySidebar 
+                  historial={
+                    tabHistorial === 'activas' 
+                      ? historial.filter(r => r.estado !== 'CONTROLADO' && r.estado !== 'RESUELTO')
+                      : historial.filter(r => r.estado === 'CONTROLADO' || r.estado === 'RESUELTO')
+                  } 
+                  onSelect={abrirDetalleReporte} 
+                />
+              </div>
+            </section>
+          </>
+        ) : (
+          <SavedReportsHistory 
+            reportes={historial} 
+            onSelectReporte={abrirDetalleReporte} 
           />
-
-          <div>
-            <HistorySidebar historial={historial} onSelect={abrirDetalleReporte} />
-          </div>
-        </section>
+        )}
       </main>
+
+
+
+
+      {toast.mostrar && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-900/95 backdrop-blur-md border border-slate-700/50 text-slate-100 px-6 py-4 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] max-w-md transition-all duration-300 animate-slide-up">
+          {toast.tipo === 'success' && <CheckCircle className="text-emerald-400 w-5 h-5 flex-shrink-0 animate-pulse" />}
+          {toast.tipo === 'warning' && <AlertCircle className="text-amber-400 w-5 h-5 flex-shrink-0" />}
+          {toast.tipo === 'info' && <AlertCircle className="text-blue-400 w-5 h-5 flex-shrink-0" />}
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Notificación</p>
+            <p className="text-xs font-bold text-white mt-0.5">{toast.mensaje}</p>
+          </div>
+          <button 
+            onClick={() => setToast(prev => ({ ...prev, mostrar: false }))} 
+            className="text-slate-400 hover:text-white transition-colors"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

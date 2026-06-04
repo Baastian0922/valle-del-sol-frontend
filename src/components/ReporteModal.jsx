@@ -63,8 +63,13 @@ const ReporteModal = ({
                   >
                     <option value="PENDIENTE" className="bg-slate-900 text-red-500 font-bold">PENDIENTE</option>
                     <option value="EN_PROCESO" className="bg-slate-900 text-blue-500 font-bold">EN PROCESO</option>
+                    <option value="CONTROLADO" className="bg-slate-900 text-amber-500 font-bold">CONTROLADO</option>
                     <option value="RESUELTO" className="bg-slate-900 text-emerald-500 font-bold">RESUELTO</option>
+                    {datos.estado && !['PENDIENTE', 'EN_PROCESO', 'CONTROLADO', 'RESUELTO'].includes(datos.estado) && (
+                      <option value={datos.estado} className="bg-slate-900 text-blue-400 font-bold">{datos.estado}</option>
+                    )}
                   </select>
+
                 ) : (
                   <p className={`text-xs font-bold uppercase tracking-widest ${datos.estado === 'RESUELTO' || datos.estado === 'ATENDIDO' ? 'text-emerald-400' : 'text-blue-400'}`}>{datos.estado}</p>
                 )}
@@ -113,17 +118,20 @@ const ReporteModal = ({
                 >
                   <Activity size={12} /> Incendio controlado
                 </button>
-                <button 
-                  type="button" 
-                  onClick={() => {
-                    if (confirm("¿Confirmas el cierre definitivo de esta alerta de incendio?")) {
-                      onActualizarEstado(datos.id, 'RESUELTO');
-                    }
-                  }}
-                  className="w-full bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-600/30 font-black py-2.5 rounded-xl uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2"
-                >
-                  <CheckCircle2 size={12} /> Incendio cerrado
-                </button>
+                {user?.role === 'ADMIN' && (
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      if (confirm("¿Confirmas el cierre definitivo de esta alerta de incendio?")) {
+                        onActualizarEstado(datos.id, 'RESUELTO');
+                      }
+                    }}
+                    className="w-full bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-600/30 font-black py-2.5 rounded-xl uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle2 size={12} /> Incendio cerrado
+                  </button>
+                )}
+
                 
                 {onAbrirGPS && (
                   <button 
