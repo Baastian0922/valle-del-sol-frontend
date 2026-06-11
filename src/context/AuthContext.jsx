@@ -5,36 +5,27 @@ import { auth, db } from '../services/firebase-config';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 
-const AuthContext = createContext(null);
+// ── Servicio de Administración de Usuarios Firebase ──────────────────────────
+import {
+  crearUsuarioFirebase,
+  editarUsuarioFirebase,
+  eliminarUsuarioFirebase,
+  alternarEstadoUsuarioFirebase,
+  escucharUsuariosFirebase,
+  traducirErrorFirebase
+} from '../services/firebase-admin-service';
 
-// Mantenemos tu base de datos simulada para tus tablas internas
-const DEFAULT_USERS = [
-  { id: 1, username: 'admin', email: 'admin@valledelsol.cl', password: '123', fullName: 'Bastián Mauricio (Admin)', role: 'ADMIN', active: true },
-  { id: 2, username: 'bombero', email: 'bomberos@valledelsol.cl', password: '123', fullName: 'Cuerpo Bomberos Linares', role: 'EMERGENCY_ENTITY', active: true },
-  { id: 3, username: 'vecino', email: 'vecino@gmail.com', password: '123', fullName: 'Juan Vecino - Comunidad', role: 'USER', active: true }
-];
+const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Inicializamos el estado directamente desde LocalStorage
-  const [usuarios, setUsuarios] = useState(() => {
-    const storedUsers = localStorage.getItem('valle_sol_usuarios');
-    if (storedUsers) {
-      try {
-        return JSON.parse(storedUsers);
-      } catch (errorStorage) {
-        console.warn("Aviso: Cargando usuarios por defecto debido a:", errorStorage.message);
-        return DEFAULT_USERS;
-      }
-    } else {
-      localStorage.setItem('valle_sol_usuarios', JSON.stringify(DEFAULT_USERS));
-      return DEFAULT_USERS;
-    }
-  });
+  // ── Lista de usuarios desde Firestore (reemplaza localStorage) ─────────────
+  const [usuarios, setUsuarios] = useState([]);
+  const [cargandoUsuarios, setCargandoUsuarios] = useState(true);
 
-  // ── Escucha Activa de Firebase ─────────────────────────────────────────────
+  // ── Escucha Activa de Firebase Auth (sesión del usuario actual) ─────────────
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
@@ -85,11 +76,23 @@ export function AuthProvider({ children }) {
     return () => unsubscribe();
   }, []);
 
-  // ── Guardar usuarios locales ───────────────────────────────────────────────
-  const guardarUsuarios = (nuevosUsuarios) => {
-    setUsuarios(nuevosUsuarios);
-    localStorage.setItem('valle_sol_usuarios', JSON.stringify(nuevosUsuarios));
-  };
+  // ── Listener en tiempo real de la colección 'usuarios' en Firestore ────────
+  // Se activa cuando hay un usuario logueado (para el panel de administración)
+  useEffect(() => {
+    if (!user) {
+      setUsuarios([]);
+      setCargandoUsuarios(false);
+      return;
+    }
+
+    setCargandoUsuarios(true);
+    const unsubscribe = escucharUsuariosFirebase((listaUsuarios) => {
+      setUsuarios(listaUsuarios);
+      setCargandoUsuarios(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   // ── Cierre de Sesión Real con Firebase ──────────────────────────────────────
   const logout = async () => {
@@ -101,35 +104,55 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // ── Tu CRUD de Usuarios Local ──────────────────────────────────────────────
-  const crearUsuario = (nuevoUser) => {
-    const userObj = {
-      id: usuarios.length > 0 ? Math.max(...usuarios.map(u => u.id)) + 1 : 1,
-      ...nuevoUser,
-      active: true
-    };
-    const actualizados = [...usuarios, userObj];
-    guardarUsuarios(actualizados);
-    return userObj;
+  // ══════════════════════════════════════════════════════════════════════════════
+  // CRUD de Usuarios — Ahora conectado a Firebase Auth + Firestore
+  // ══════════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Crea un usuario nuevo en Firebase Auth y su perfil en Firestore.
+   * @throws {Error} Si el correo ya existe o hay un error de Firebase.
+   */
+  const crearUsuario = async (nuevoUser) => {
+    const email = nuevoUser.email?.trim().toLowerCase();
+    const password = nuevoUser.password?.trim() || 'ValleSol2026!';
+
+    const resultado = await crearUsuarioFirebase(email, password, {
+      fullName: nuevoUser.fullName,
+      username: nuevoUser.username,
+      role: nuevoUser.role,
+      institucion: nuevoUser.institucion || 'general'
+    });
+
+    // La lista se actualiza automáticamente via el listener onSnapshot
+    return resultado;
   };
 
-  const eliminarUsuario = (id) => {
-    const actualizados = usuarios.filter(u => u.id !== id);
-    guardarUsuarios(actualizados);
+  /**
+   * Edita el perfil de un usuario en Firestore.
+   * Nota: No puede cambiar la contraseña de Auth desde el frontend.
+   */
+  const editarUsuario = async (uid, datosActualizados) => {
+    await editarUsuarioFirebase(uid, datosActualizados);
+    // La lista se actualiza automáticamente via el listener onSnapshot
   };
 
-  const editarUsuario = (id, datosActualizados) => {
-    const actualizados = usuarios.map(u =>
-      u.id === id ? { ...u, ...datosActualizados } : u
-    );
-    guardarUsuarios(actualizados);
+  /**
+   * Elimina el perfil de un usuario de Firestore.
+   * La cuenta de Auth sigue existiendo pero sin perfil no puede usar el sistema.
+   */
+  const eliminarUsuario = async (uid) => {
+    await eliminarUsuarioFirebase(uid);
+    // La lista se actualiza automáticamente via el listener onSnapshot
   };
 
-  const alternarEstadoUsuario = (id) => {
-    const actualizados = usuarios.map(u =>
-      u.id === id ? { ...u, active: !u.active } : u
-    );
-    guardarUsuarios(actualizados);
+  /**
+   * Alterna el estado activo/inactivo de un usuario en Firestore.
+   */
+  const alternarEstadoUsuario = async (uid) => {
+    const usuario = usuarios.find(u => u.id === uid);
+    if (!usuario) return;
+    await alternarEstadoUsuarioFirebase(uid, usuario.active);
+    // La lista se actualiza automáticamente via el listener onSnapshot
   };
 
   return (
@@ -138,11 +161,13 @@ export function AuthProvider({ children }) {
       usuarios,
       loading,
       cargando: loading,
+      cargandoUsuarios,
       logout,
       crearUsuario,
       editarUsuario,
       eliminarUsuario,
-      alternarEstadoUsuario
+      alternarEstadoUsuario,
+      traducirErrorFirebase
     }}>
       {children}
     </AuthContext.Provider>
