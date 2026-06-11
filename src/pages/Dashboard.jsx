@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext'; // ◄ Un solo nivel hacia atrás
 import AdminDashboard from './dashboards/AdminDashboard';
 import StaffDashboard from './dashboards/StaffDashboard';
 import EntidadDashboard from './dashboards/EntidadDashboard';
@@ -16,22 +16,19 @@ function Dashboard() {
     );
   }
 
-  // Switch de enrutamiento dinámico según el Rol del usuario
+  // Switch de enrutamiento dinámico según el Rol real del usuario
   switch (user?.role) {
     case 'ADMIN':
       return <AdminDashboard />;
       
     case 'STAFF':
-      // Panel especial para guardias municipales (Seguridad Ciudadana) sin control de usuarios
       return <StaffDashboard />;
       
     case 'EMERGENCY_ENTITY':
-      // Panel especial táctico para Bomberos, Carabineros, CONAF
       return <EntidadDashboard />;
       
     case 'USER':
     default:
-      // Portal comunitario para Vecinos
       return <VecinoDashboard />;
   }
 }

@@ -1,21 +1,48 @@
-import React from 'react';
-import { X, Activity, Calendar, Send, Trash2, Save, CheckCircle2, Navigation } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Activity, Calendar, Send, Trash2, Save, CheckCircle2, Navigation, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
+// Se elimino la propiedad 'onFinalizeEmergency' que no se utilizaba
 const ReporteModal = ({ 
-  mostrar, setMostrar, modoLectura, datos, handleChange, handleSubmit, enviando, archivo, setArchivo, onDelete, onFinalizeEmergency, onActualizarEstado, onAbrirGPS
+  mostrar, setMostrar, modoLectura, datos, handleChange, handleSubmit, enviando, archivo, setArchivo, onDelete, onActualizarEstado, onAbrirGPS
 }) => {
   const { user } = useAuth();
   
+  const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
+
+  // Se envuelve el reseteo en una macro-tarea asincrona (setTimeout) para evitar el render en cascada
+  useEffect(() => {
+    if (!mostrar) {
+      const timer = setTimeout(() => setMostrarConfirmacion(false), 0);
+      return () => clearTimeout(timer);
+    }
+  }, [mostrar]);
+
   if (!mostrar) return null;
 
-  // El Admin puede editar incluso en modo lectura para actualizar reportes
   const esAdmin = user?.role === 'ADMIN';
   const editable = !modoLectura || esAdmin;
 
+  const handlePreSubmit = (e) => {
+    e.preventDefault();
+    if (!modoLectura) {
+      setMostrarConfirmacion(true);
+    } else {
+      handleSubmit(e);
+    }
+  };
+
+  const confirmarEnvioFinal = (e) => {
+    handleSubmit(e);
+  };
+
+  const cancelarConfirmacion = () => {
+    setMostrarConfirmacion(false);
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
-      <div className={`bg-slate-900 border ${modoLectura && !esAdmin ? 'border-emerald-500/30' : esAdmin ? 'border-red-500/30' : 'border-slate-800'} w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl`}>
+      <div className={`bg-slate-900 border ${modoLectura && !esAdmin ? 'border-emerald-500/30' : esAdmin ? 'border-red-500/30' : 'border-slate-800'} w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar`}>
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-black text-white uppercase italic tracking-tighter">
             {esAdmin && modoLectura ? 'Administrar Reporte' : (modoLectura ? 'Situación del Reporte' : 'Nuevo Reporte')}
@@ -23,7 +50,7 @@ const ReporteModal = ({
           <button onClick={() => setMostrar(false)} className="text-slate-500 hover:text-white"><X size={24} /></button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handlePreSubmit} className="space-y-4">
           <div>
             <label className="text-[10px] font-black uppercase text-slate-500 ml-2 italic">Título</label>
             <input 
@@ -131,7 +158,6 @@ const ReporteModal = ({
                     <CheckCircle2 size={12} /> Incendio cerrado
                   </button>
                 )}
-
                 
                 {onAbrirGPS && (
                   <button 
@@ -148,35 +174,65 @@ const ReporteModal = ({
             </div>
           )}
 
-          <div className="flex gap-3">
-            {esAdmin && modoLectura && (
-              <button 
-                type="button" 
-                onClick={() => {
-                  if (confirm("¿Estás seguro de eliminar este reporte permanentemente?")) {
-                    onDelete(datos.id);
-                    setMostrar(false);
-                  }
-                }}
-                className="bg-red-600/10 hover:bg-red-600 border border-red-600/30 text-red-500 hover:text-white p-4 rounded-2xl transition-all"
-                title="Eliminar Reporte"
-              >
-                <Trash2 size={18} />
-              </button>
-            )}
-
-            <button 
-              type="submit" 
-              disabled={enviando} 
-              className={`flex-1 ${modoLectura && !esAdmin ? 'bg-slate-700 hover:bg-slate-600' : 'bg-red-600 hover:bg-red-500'} text-white font-black py-4 rounded-2xl uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 transition-all`}
-            >
-              {modoLectura && !esAdmin ? "Cerrar Vista" : (
-                enviando ? "ENVIANDO..." : (
-                  esAdmin && modoLectura ? <><Save size={18} /> Guardar Cambios</> : <><Send size={18} /> Confirmar Reporte</>
-                )
+          {!mostrarConfirmacion ? (
+            <div className="flex gap-3">
+              {esAdmin && modoLectura && (
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    if (confirm("¿Estás seguro de eliminar este reporte permanentemente?")) {
+                      onDelete(datos.id);
+                      setMostrar(false);
+                    }
+                  }}
+                  className="bg-red-600/10 hover:bg-red-600 border border-red-600/30 text-red-500 hover:text-white p-4 rounded-2xl transition-all"
+                  title="Eliminar Reporte"
+                >
+                  <Trash2 size={18} />
+                </button>
               )}
-            </button>
-          </div>
+
+              <button 
+                type="submit" 
+                disabled={enviando} 
+                className={`flex-1 ${modoLectura && !esAdmin ? 'bg-slate-700 hover:bg-slate-600' : 'bg-red-600 hover:bg-red-500'} text-white font-black py-4 rounded-2xl uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 transition-all`}
+              >
+                {modoLectura && !esAdmin ? "Cerrar Vista" : (
+                  enviando ? "ENVIANDO..." : (
+                    esAdmin && modoLectura ? <><Save size={18} /> Guardar Cambios</> : <><Send size={18} /> Confirmar Reporte</>
+                  )
+                )}
+              </button>
+            </div>
+          ) : (
+            <div className="bg-slate-950 border border-red-900/50 p-4 rounded-2xl animate-fade-in mt-4">
+              <div className="flex items-center justify-center gap-2 text-red-500 mb-4">
+                <AlertTriangle size={18} />
+                <p className="text-[11px] font-black uppercase tracking-wider text-center">
+                  ¿Estás seguro de reportar esta emergencia?
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={cancelarConfirmacion}
+                  disabled={enviando}
+                  className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl font-bold uppercase text-[10px] tracking-widest transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmarEnvioFinal}
+                  disabled={enviando}
+                  className="flex-1 bg-red-600 hover:bg-red-500 text-white py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {enviando ? 'Enviando...' : 'Aceptar'}
+                </button>
+              </div>
+            </div>
+          )}
+
         </form>
       </div>
     </div>

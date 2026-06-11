@@ -1,9 +1,27 @@
 import React, { useState } from 'react';
-import { Search, Filter, Calendar, MapPin, Eye, FileText, Download } from 'lucide-react';
+import { Search, Filter, Calendar, MapPin, Eye, FileText, Download, X } from 'lucide-react';
+
+const getReportTimestamp = (fecha) => {
+  if (!fecha) return null;
+
+  const parsed = new Date(fecha);
+  if (!Number.isNaN(parsed.getTime())) return parsed.getTime();
+
+  const match = String(fecha).match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(?:,\s*(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (!match) return null;
+
+  const [, day, month, year, hour = '0', minute = '0', second = '0'] = match;
+  const fallbackDate = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second));
+  return Number.isNaN(fallbackDate.getTime()) ? null : fallbackDate.getTime();
+};
 
 export default function SavedReportsHistory({ reportes, onSelectReporte }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterEstado, setFilterEstado] = useState('TODOS');
+  const [fechaDesde, setFechaDesde] = useState('');
+  const [fechaHasta, setFechaHasta] = useState('');
+
+  const rangoInvalido = Boolean(fechaDesde && fechaHasta && fechaDesde > fechaHasta);
 
   const filteredReportes = reportes.filter(rep => {
     const matchesSearch = 
@@ -11,8 +29,14 @@ export default function SavedReportsHistory({ reportes, onSelectReporte }) {
       rep.descripcion?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesEstado = filterEstado === 'TODOS' || rep.estado === filterEstado;
+    const timestamp = getReportTimestamp(rep.fecha);
+    const inicio = fechaDesde ? new Date(`${fechaDesde}T00:00:00`).getTime() : null;
+    const fin = fechaHasta ? new Date(`${fechaHasta}T23:59:59.999`).getTime() : null;
+    const matchesFecha =
+      (!fechaDesde && !fechaHasta) ||
+      (timestamp !== null && (!inicio || timestamp >= inicio) && (!fin || timestamp <= fin));
 
-    return matchesSearch && matchesEstado;
+    return matchesSearch && matchesEstado && matchesFecha && !rangoInvalido;
   });
 
   const getBadgeClass = (estado) => {
@@ -32,7 +56,7 @@ export default function SavedReportsHistory({ reportes, onSelectReporte }) {
   };
 
   const handleExportCSV = () => {
-    if (filteredReportes.length === 0) return;
+    if (filteredReportes.length === 0 || rangoInvalido) return;
     
     const headers = ['ID', 'Titulo', 'Descripcion', 'Estado', 'Latitud', 'Longitud', 'Fecha'];
     const rows = filteredReportes.map(r => [
@@ -51,7 +75,10 @@ export default function SavedReportsHistory({ reportes, onSelectReporte }) {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `historial_reportes_valle_sol_${new Date().toISOString().split('T')[0]}.csv`);
+    const rangoArchivo = fechaDesde || fechaHasta
+      ? `${fechaDesde || 'inicio'}_a_${fechaHasta || 'hoy'}`
+      : new Date().toISOString().split('T')[0];
+    link.setAttribute("download", `historial_reportes_valle_sol_${rangoArchivo}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -74,7 +101,8 @@ export default function SavedReportsHistory({ reportes, onSelectReporte }) {
         {/* Botón Exportar */}
         <button
           onClick={handleExportCSV}
-          className="bg-slate-950 border border-slate-800 hover:border-slate-700 text-[10px] font-black uppercase text-slate-300 hover:text-white px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 self-start md:self-auto italic tracking-wider animate-hover-pulse"
+          disabled={filteredReportes.length === 0 || rangoInvalido}
+          className="bg-slate-950 border border-slate-800 hover:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-[10px] font-black uppercase text-slate-300 hover:text-white px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 self-start md:self-auto italic tracking-wider animate-hover-pulse"
         >
           <Download size={14} className="text-emerald-500" /> Exportar CSV
         </button>
@@ -113,6 +141,55 @@ export default function SavedReportsHistory({ reportes, onSelectReporte }) {
             <option value="CONTROLADO">🟡 Controlado</option>
             <option value="RESUELTO">🟢 Cerrado</option>
           </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 mb-6 p-4 rounded-2xl bg-slate-950/40 border border-slate-800/60">
+        <label className="block">
+          <span className="block text-[9px] text-slate-500 font-black uppercase tracking-widest mb-2">Desde</span>
+          <div className="relative">
+            <Calendar size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none" />
+            <input
+              type="date"
+              value={fechaDesde}
+              max={fechaHasta || undefined}
+              onChange={(event) => setFechaDesde(event.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 text-white text-xs pl-11 pr-4 py-3 rounded-xl focus:outline-none focus:border-blue-500"
+            />
+          </div>
+        </label>
+
+        <label className="block">
+          <span className="block text-[9px] text-slate-500 font-black uppercase tracking-widest mb-2">Hasta</span>
+          <div className="relative">
+            <Calendar size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-400 pointer-events-none" />
+            <input
+              type="date"
+              value={fechaHasta}
+              min={fechaDesde || undefined}
+              onChange={(event) => setFechaHasta(event.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 text-white text-xs pl-11 pr-4 py-3 rounded-xl focus:outline-none focus:border-blue-500"
+            />
+          </div>
+        </label>
+
+        <button
+          type="button"
+          onClick={() => {
+            setFechaDesde('');
+            setFechaHasta('');
+          }}
+          disabled={!fechaDesde && !fechaHasta}
+          className="self-end px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-colors"
+        >
+          <X size={13} /> Limpiar fechas
+        </button>
+
+        <div className="md:col-span-3 flex justify-between gap-4 text-[9px] font-black uppercase tracking-wider">
+          <span className={rangoInvalido ? 'text-red-400' : 'text-slate-500'}>
+            {rangoInvalido ? 'La fecha desde no puede ser posterior a la fecha hasta' : 'El rango incluye ambos días completos'}
+          </span>
+          <span className="text-blue-400">{filteredReportes.length} reportes encontrados</span>
         </div>
       </div>
 
