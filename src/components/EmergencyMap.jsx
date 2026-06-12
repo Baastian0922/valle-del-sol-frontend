@@ -186,7 +186,7 @@ export default function EmergencyMap({
           
           {safeSelectedCoords && <MapController targetCoords={safeSelectedCoords} />}
 
-          {historial.map((rep) => {
+          {historial.filter(rep => rep.estado !== 'RESUELTO').map((rep) => {
             const lat = Number(rep.latitud);
             const lng = Number(rep.longitud);
             if (isNaN(lat) || isNaN(lng)) return null;
