@@ -156,21 +156,19 @@ export default function AdminDashboard() {
       return;
     }
 
-    const nuevoId = Math.floor(Math.random() * 1000) + 10;
-    const payload = {
-      ...datosReporte,
-      id: nuevoId,
-      latitud: parseFloat(datosReporte.latitud),
-      longitud: parseFloat(datosReporte.longitud),
-      fecha: new Date().toLocaleString()
-    };
+    const payload = { ...datosReporte, latitud: parseFloat(datosReporte.latitud), longitud: parseFloat(datosReporte.longitud) };
 
 
     let syncExitoso = false;
     try {
       await api.post('/crear', payload);
       syncExitoso = true;
-    } catch (err) {
+    } catch (error) {
+      if (error.response && error.response.status === 429) {
+        mostrarToast("Límite diario alcanzado: Máximo 3 reportes por IP.", "warning");
+        setEnviando(false);
+        return;
+      }
       console.warn("Backend offline. Creando reporte en sesión local...");
     }
 
