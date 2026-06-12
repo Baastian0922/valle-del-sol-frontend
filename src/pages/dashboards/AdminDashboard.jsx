@@ -159,12 +159,14 @@ export default function AdminDashboard() {
     }
 
     const payload = { ...datosReporte, latitud: parseFloat(datosReporte.latitud), longitud: parseFloat(datosReporte.longitud) };
-
+    delete payload.id;
 
     let syncExitoso = false;
+    let reporteCreado = null;
     try {
-      await api.post('/crear', payload);
+      const response = await api.post('/crear', payload);
       syncExitoso = true;
+      reporteCreado = response.data;
     } catch (error) {
       if (error.response && error.response.status === 429) {
         mostrarToast("Límite diario alcanzado: Máximo 3 reportes por IP.", "warning");
@@ -174,13 +176,15 @@ export default function AdminDashboard() {
       console.warn("Backend offline. Creando reporte en sesión local...");
     }
 
+    const reporteFinal = syncExitoso ? reporteCreado : { ...payload, id: `local-${Date.now()}` };
+
     // Guardar en localStorage para persistencia offline
     const stored = localStorage.getItem('valle_sol_reportes');
     let reportesList = stored ? JSON.parse(stored) : DEFAULT_ALERTAS;
-    reportesList = [payload, ...reportesList];
+    reportesList = [reporteFinal, ...reportesList];
     localStorage.setItem('valle_sol_reportes', JSON.stringify(reportesList));
 
-    setHistorial(prev => [payload, ...prev]);
+    setHistorial(prev => [reporteFinal, ...prev]);
     if (syncExitoso) {
       mostrarToast("Incendio reportado y sincronizado con éxito.", "success");
     } else {

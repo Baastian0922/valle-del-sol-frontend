@@ -163,11 +163,14 @@ export default function VecinoDashboard() {
     setEnviando(true);
 
     const payload = { ...datosReporte, latitud: parseFloat(datosReporte.latitud), longitud: parseFloat(datosReporte.longitud) };
+    delete payload.id;
 
     let syncExitoso = false;
+    let reporteCreado = null;
     try {
-      await api.post('/crear', payload);
+      const response = await api.post('/crear', payload);
       syncExitoso = true;
+      reporteCreado = response.data;
     } catch (error) {
       if (error.response && error.response.status === 429) {
         mostrarToast("Límite diario alcanzado: Máximo 3 reportes para evitar spam.", "warning");
@@ -177,6 +180,8 @@ export default function VecinoDashboard() {
       console.warn("Backend offline. Creando reporte en sesion local...");
     }
 
+    const reporteFinal = syncExitoso ? reporteCreado : { ...payload, id: `local-${Date.now()}` };
+
     const DEFAULT_ALERTAS = [
       { id: 101, titulo: "Incendio Forestal Sector Alto Sol", descripcion: "Fuego descontrolado cerca de matorrales en pendiente pronunciada.", latitud: -33.4320, longitud: -70.6410, estado: 'PENDIENTE', fecha: new Date(Date.now() - 3600000).toLocaleString() },
       { id: 102, titulo: "Columna de Humo en Quebrada", descripcion: "Comunidad reporta avistamiento de humo gris denso en la quebrada principal.", latitud: -33.4490, longitud: -70.6590, estado: 'EN_PROCESO', fecha: new Date(Date.now() - 7200000).toLocaleString() },
@@ -185,10 +190,10 @@ export default function VecinoDashboard() {
 
     const stored = localStorage.getItem('valle_sol_reportes');
     let reportesList = stored ? JSON.parse(stored) : DEFAULT_ALERTAS;
-    reportesList = [payload, ...reportesList];
+    reportesList = [reporteFinal, ...reportesList];
     localStorage.setItem('valle_sol_reportes', JSON.stringify(reportesList));
 
-    setHistorial(prev => [payload, ...prev]);
+    setHistorial(prev => [reporteFinal, ...prev]);
 
     if (syncExitoso) {
       mostrarToast("Reporte de incendio registrado y procesado con éxito.", "success");
