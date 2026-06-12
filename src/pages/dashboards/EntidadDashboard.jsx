@@ -65,7 +65,6 @@ export default function EntidadDashboard() {
     try {
       const response = await api.get('/sincronizar');
       localStorage.setItem('valle_sol_reportes', JSON.stringify(response.data));
-      // Las entidades de emergencia solo ven reportes que no estén resueltos
       aplicarReportesEntidad(response.data);
     } catch {
       console.warn("Backend offline o error al sincronizar. Cargando desde LocalStorage...");
@@ -81,16 +80,12 @@ export default function EntidadDashboard() {
 
   useEffect(() => {
     let activo = true;
-
     const inicializarHistorial = async () => {
       if (!activo) return;
       await cargarHistorial();
     };
-
     inicializarHistorial();
-    return () => {
-      activo = false;
-    };
+    return () => { activo = false; };
   }, [cargarHistorial, user]);
 
   useEffect(() => {
@@ -98,10 +93,8 @@ export default function EntidadDashboard() {
       if (event.key !== 'valle_sol_reportes' || !event.newValue) return;
       aplicarReportesEntidad(JSON.parse(event.newValue));
     };
-
     const intervalId = setInterval(cargarHistorial, 10000);
     window.addEventListener('storage', sincronizarDesdeLocalStorage);
-
     return () => {
       clearInterval(intervalId);
       window.removeEventListener('storage', sincronizarDesdeLocalStorage);
@@ -129,13 +122,46 @@ export default function EntidadDashboard() {
   };
 
   const handleActualizarEstado = async (id, nuevoEstado) => {
+    // Si la entidad se marca "EN CAMINO" a un caso, primero revertimos cualquier
+    // otro caso que ya tenga "EN CAMINO" de esta misma entidad (solo 1 caso a la vez)
+    if (nuevoEstado.startsWith('EN CAMINO')) {
+      const casosEnCamino = historial.filter(r => r.id !== id && r.estado?.startsWith('EN CAMINO'));
+      for (const caso of casosEnCamino) {
+        try {
+          await api.put(`/editar/${caso.id}`, { estado: 'PENDIENTE' });
+        } catch {
+          console.warn("API offline. Revirtiendo estado localmente...");
+        }
+      }
+      // Actualizar localStorage para los casos revertidos
+      const stored = localStorage.getItem('valle_sol_reportes');
+      if (stored) {
+        const list = JSON.parse(stored);
+        const updatedList = list.map(r => {
+          if (r.id === id) return { ...r, estado: nuevoEstado };
+          if (casosEnCamino.some(c => c.id === r.id)) return { ...r, estado: 'PENDIENTE' };
+          return r;
+        });
+        localStorage.setItem('valle_sol_reportes', JSON.stringify(updatedList));
+      }
+      // Actualizar historial local: revertir anteriores + marcar el seleccionado
+      setHistorial(prev => prev.map(r => {
+        if (r.id === id) return { ...r, estado: nuevoEstado };
+        if (casosEnCamino.some(c => c.id === r.id)) return { ...r, estado: 'PENDIENTE' };
+        return r;
+      }));
+      setReporteSeleccionado(prev => prev?.id === id ? { ...prev, estado: nuevoEstado } : prev);
+      mostrarToast(`Unidad despachada al caso seleccionado.`, "info");
+      return;
+    }
+
+    // Para otros estados (CONTROLADO, RESUELTO), flujo normal
     try {
       await api.put(`/editar/${id}`, { estado: nuevoEstado });
     } catch {
       console.warn("API offline. Actualizando estado localmente...");
     }
 
-    // Actualizar en localStorage
     const stored = localStorage.getItem('valle_sol_reportes');
     if (stored) {
       const list = JSON.parse(stored);
@@ -153,7 +179,6 @@ export default function EntidadDashboard() {
       setReporteSeleccionado(prev => prev?.id === id ? { ...prev, estado: nuevoEstado } : prev);
       mostrarToast(`Estado de la emergencia actualizado a: ${nuevoEstado}`, "info");
     }
-
   };
 
   const statsData = [
