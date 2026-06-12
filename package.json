@@ -7,12 +7,15 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "npm run build && firebase deploy --only hosting",
+    "deploy:preview": "npm run build && firebase hosting:channel:deploy preview"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.2.2",
     "@vis.gl/react-google-maps": "^1.8.3",
     "axios": "^1.15.0",
+    "firebase": "^12.14.0",
     "leaflet": "^1.9.4",
     "leaflet-control-geocoder": "^3.3.1",
     "lucide-react": "^1.8.0",
@@ -30,6 +33,7 @@
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "firebase-tools": "^14.0.0",
     "globals": "^17.4.0",
     "postcss": "^8.5.9",
     "tailwindcss": "^4.2.2",

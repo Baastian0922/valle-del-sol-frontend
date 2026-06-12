@@ -10,6 +10,7 @@ import HistorySidebar from '../../components/HistorySidebar';
 import UserManagementModal from '../../components/UserManagementModal';
 import EmergencyMap from '../../components/EmergencyMap';
 import SavedReportsHistory from '../../components/SavedReportsHistory';
+import AdminEmergencyController from '../../components/AdminEmergencyController';
 
 
 import { Flame, ShieldAlert, Users, TrendingUp, CheckCircle, AlertCircle, X } from 'lucide-react';
@@ -31,6 +32,7 @@ export default function AdminDashboard() {
   const [toast, setToast] = useState({ mostrar: false, mensaje: '', tipo: 'success' });
   const [toastTimeoutId, setToastTimeoutId] = useState(null);
   const [vistaActiva, setVistaActiva] = useState('monitoreo'); // 'monitoreo' | 'historial'
+  const [reporteSeleccionado, setReporteSeleccionado] = useState(null);
 
 
   const mostrarToast = (mensaje, tipo = 'success') => {
@@ -88,7 +90,7 @@ export default function AdminDashboard() {
       fecha: rep.fecha ? new Date(rep.fecha).toLocaleString() : 'Sin fecha'
     });
     setSelectedCoords([rep.latitud, rep.longitud]);
-    setMostrarModal(true);
+    setReporteSeleccionado(rep);
   };
 
   const prepararNuevoReporte = (lat = -33.4372, lng = -70.6506) => {
@@ -156,21 +158,19 @@ export default function AdminDashboard() {
       return;
     }
 
-    const nuevoId = Math.floor(Math.random() * 1000) + 10;
-    const payload = {
-      ...datosReporte,
-      id: nuevoId,
-      latitud: parseFloat(datosReporte.latitud),
-      longitud: parseFloat(datosReporte.longitud),
-      fecha: new Date().toLocaleString()
-    };
+    const payload = { ...datosReporte, latitud: parseFloat(datosReporte.latitud), longitud: parseFloat(datosReporte.longitud) };
 
 
     let syncExitoso = false;
     try {
       await api.post('/crear', payload);
       syncExitoso = true;
-    } catch (err) {
+    } catch (error) {
+      if (error.response && error.response.status === 429) {
+        mostrarToast("Límite diario alcanzado: Máximo 3 reportes por IP.", "warning");
+        setEnviando(false);
+        return;
+      }
       console.warn("Backend offline. Creando reporte en sesión local...");
     }
 
@@ -207,6 +207,7 @@ export default function AdminDashboard() {
 
     setHistorial(prev => prev.filter(r => r.id !== id));
     setSelectedCoords(null);
+    setReporteSeleccionado(null);
     mostrarToast("Reporte eliminado con éxito.", "success");
   };
 
@@ -217,7 +218,6 @@ export default function AdminDashboard() {
       console.warn("API offline. Finalizando emergencia localmente...");
     }
 
-    // Actualizar en localStorage
     const stored = localStorage.getItem('valle_sol_reportes');
     if (stored) {
       const list = JSON.parse(stored);
@@ -227,7 +227,9 @@ export default function AdminDashboard() {
 
     setHistorial(prev => prev.map(r => r.id === id ? { ...r, estado: 'RESUELTO' } : r));
     setSelectedCoords(null);
-    mostrarToast("Emergencia finalizada con éxito.", "success");
+    setReporteSeleccionado(null);
+    setTabHistorial('controlados');
+    mostrarToast("Emergencia cerrada y trasladada al historial de controlados.", "success");
   };
 
   const handleAbrirGPS = (lat, lng) => {
@@ -249,13 +251,18 @@ export default function AdminDashboard() {
       localStorage.setItem('valle_sol_reportes', JSON.stringify(updatedList));
     }
 
+    setHistorial(prev => prev.map(r => r.id === id ? { ...r, estado: nuevoEstado } : r));
+    setReporteSeleccionado(prev => prev?.id === id ? { ...prev, estado: nuevoEstado } : prev);
+
     if (nuevoEstado === 'RESUELTO') {
-      setHistorial(prev => prev.map(r => r.id === id ? { ...r, estado: nuevoEstado } : r));
       setSelectedCoords(null);
-      mostrarToast("Emergencia finalizada y cerrada con éxito.", "success");
+      setReporteSeleccionado(null);
+      setTabHistorial('controlados');
+      mostrarToast("Incendio resuelto. Alerta trasladada al historial de controlados.", "success");
+    } else if (nuevoEstado === 'CONTROLADO') {
+      mostrarToast(`Incendio marcado como controlado.`, "info");
     } else {
-      setHistorial(prev => prev.map(r => r.id === id ? { ...r, estado: nuevoEstado } : r));
-      mostrarToast(`Estado de la emergencia actualizado a: ${nuevoEstado}`, "info");
+      mostrarToast(`Estado actualizado a: ${nuevoEstado}`, "info");
     }
   };
 
@@ -341,29 +348,45 @@ export default function AdminDashboard() {
               />
 
               <div>
-                <div className="flex gap-2 mb-4 bg-slate-900 p-1.5 rounded-2xl border border-slate-800">
-                  <button 
-                    onClick={() => setTabHistorial('activas')}
-                    className={`flex-grow py-2 rounded-xl text-[10px] font-black uppercase tracking-wider italic transition-all ${tabHistorial === 'activas' ? 'bg-red-600 text-white shadow-lg shadow-red-600/10' : 'text-slate-400 hover:text-white bg-slate-950/40'}`}
-                  >
-                    Alertas Activas ({historial.filter(r => r.estado !== 'CONTROLADO' && r.estado !== 'RESUELTO').length})
-                  </button>
-                  <button 
-                    onClick={() => setTabHistorial('controlados')}
-                    className={`flex-grow py-2 rounded-xl text-[10px] font-black uppercase tracking-wider italic transition-all ${tabHistorial === 'controlados' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/10' : 'text-slate-400 hover:text-white bg-slate-950/40'}`}
-                  >
-                    Controlados / Cerrados ({historial.filter(r => r.estado === 'CONTROLADO' || r.estado === 'RESUELTO').length})
-                  </button>
-                </div>
-                
-                <HistorySidebar 
-                  historial={
-                    tabHistorial === 'activas' 
-                      ? historial.filter(r => r.estado !== 'CONTROLADO' && r.estado !== 'RESUELTO')
-                      : historial.filter(r => r.estado === 'CONTROLADO' || r.estado === 'RESUELTO')
-                  } 
-                  onSelect={abrirDetalleReporte} 
-                />
+                {reporteSeleccionado ? (
+                  <AdminEmergencyController
+                    reporte={reporteSeleccionado}
+                    onBack={() => {
+                      setReporteSeleccionado(null);
+                      setSelectedCoords(null);
+                    }}
+                    onActualizarEstado={handleActualizarEstado}
+                    onAbrirGPS={handleAbrirGPS}
+                    onDelete={handleDeleteReporte}
+                    userName={user?.fullName}
+                  />
+                ) : (
+                  <>
+                    <div className="flex gap-2 mb-4 bg-slate-900 p-1.5 rounded-2xl border border-slate-800">
+                      <button 
+                        onClick={() => setTabHistorial('activas')}
+                        className={`flex-grow py-2 rounded-xl text-[10px] font-black uppercase tracking-wider italic transition-all ${tabHistorial === 'activas' ? 'bg-red-600 text-white shadow-lg shadow-red-600/10' : 'text-slate-400 hover:text-white bg-slate-950/40'}`}
+                      >
+                        Alertas Activas ({historial.filter(r => r.estado !== 'CONTROLADO' && r.estado !== 'RESUELTO').length})
+                      </button>
+                      <button 
+                        onClick={() => setTabHistorial('controlados')}
+                        className={`flex-grow py-2 rounded-xl text-[10px] font-black uppercase tracking-wider italic transition-all ${tabHistorial === 'controlados' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/10' : 'text-slate-400 hover:text-white bg-slate-950/40'}`}
+                      >
+                        Controlados / Cerrados ({historial.filter(r => r.estado === 'CONTROLADO' || r.estado === 'RESUELTO').length})
+                      </button>
+                    </div>
+                    
+                    <HistorySidebar 
+                      historial={
+                        tabHistorial === 'activas' 
+                          ? historial.filter(r => r.estado !== 'CONTROLADO' && r.estado !== 'RESUELTO')
+                          : historial.filter(r => r.estado === 'CONTROLADO' || r.estado === 'RESUELTO')
+                      } 
+                      onSelect={abrirDetalleReporte} 
+                    />
+                  </>
+                )}
               </div>
             </section>
           </>

@@ -29,7 +29,8 @@ function LandingPage() {
             Plataforma digital para la gestión y reporte de focos de incendio en la comuna de Valle del Sol.
           </p>
           <div className="flex gap-4">
-            <Link to="/login" className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-red-600/20">
+            {/* Se modifica la ruta to hacia /dashboard para omitir el inicio de sesion obligatorio */}
+            <Link to="/dashboard" className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-red-600/20">
               Ingresar al Panel <ArrowRight size={20} />
             </Link>
           </div>

@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -8,16 +7,16 @@ import StatCard from '../../components/StatCard';
 import ReporteModal from '../../components/ReporteModal';
 import HistorySidebar from '../../components/HistorySidebar';
 import EmergencyMap from '../../components/EmergencyMap';
+import EmergencyController from '../../components/EmergencyController';
 
 import { Flame, ShieldAlert, Users, TrendingUp, CheckCircle, AlertCircle, X } from 'lucide-react';
 
 
 export default function EntidadDashboard() {
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   // Estados generales
-  const [enviando, setEnviando] = useState(false);
+  const enviando = false;
   const [toast, setToast] = useState({ mostrar: false, mensaje: '', tipo: 'success' });
   const [toastTimeoutId, setToastTimeoutId] = useState(null);
 
@@ -37,16 +36,26 @@ export default function EntidadDashboard() {
   const [historial, setHistorial] = useState([]);
   const [archivo, setArchivo] = useState(null);
   const [selectedCoords, setSelectedCoords] = useState(null);
+  const [reporteSeleccionado, setReporteSeleccionado] = useState(null);
 
   const [datosReporte, setDatosReporte] = useState({
     id: null, titulo: '', descripcion: '', latitud: -33.4372, longitud: -70.6506, estado: 'PENDIENTE', fecha: ''
   });
 
-  useEffect(() => {
-    cargarHistorial();
-  }, [user]);
+  const aplicarReportesEntidad = useCallback((reportes) => {
+    const reportesActivos = reportes.filter(r => r.estado !== 'RESUELTO');
+    setHistorial(reportesActivos);
+    setReporteSeleccionado(prev => prev ? reportesActivos.find(r => r.id === prev.id) || null : null);
+    setSelectedCoords(prev => {
+      if (!prev) return prev;
+      const sigueVisible = reportesActivos.some(r =>
+        Number(r.latitud) === Number(prev[0]) && Number(r.longitud) === Number(prev[1])
+      );
+      return sigueVisible ? prev : null;
+    });
+  }, []);
 
-  const cargarHistorial = async () => {
+  const cargarHistorial = useCallback(async () => {
     const DEFAULT_ALERTAS = [
       { id: 101, titulo: "Incendio Forestal Sector Alto Sol", descripcion: "Fuego descontrolado cerca de matorrales en pendiente pronunciada.", latitud: -33.4320, longitud: -70.6410, estado: 'PENDIENTE', fecha: new Date(Date.now() - 3600000).toLocaleString() },
       { id: 102, titulo: "Columna de Humo en Quebrada", descripcion: "Comunidad reporta avistamiento de humo gris denso en la quebrada principal.", latitud: -33.4490, longitud: -70.6590, estado: 'EN_PROCESO', fecha: new Date(Date.now() - 7200000).toLocaleString() },
@@ -56,9 +65,8 @@ export default function EntidadDashboard() {
     try {
       const response = await api.get('/sincronizar');
       localStorage.setItem('valle_sol_reportes', JSON.stringify(response.data));
-      // Las entidades de emergencia solo ven reportes que no estén resueltos
-      setHistorial(response.data.filter(r => r.estado !== 'RESUELTO'));
-    } catch (err) {
+      aplicarReportesEntidad(response.data);
+    } catch {
       console.warn("Backend offline o error al sincronizar. Cargando desde LocalStorage...");
       const stored = localStorage.getItem('valle_sol_reportes');
       let reportesList = stored ? JSON.parse(stored) : null;
@@ -66,9 +74,32 @@ export default function EntidadDashboard() {
         reportesList = DEFAULT_ALERTAS;
         localStorage.setItem('valle_sol_reportes', JSON.stringify(DEFAULT_ALERTAS));
       }
-      setHistorial(reportesList.filter(r => r.estado !== 'RESUELTO'));
+      aplicarReportesEntidad(reportesList);
     }
-  };
+  }, [aplicarReportesEntidad]);
+
+  useEffect(() => {
+    let activo = true;
+    const inicializarHistorial = async () => {
+      if (!activo) return;
+      await cargarHistorial();
+    };
+    inicializarHistorial();
+    return () => { activo = false; };
+  }, [cargarHistorial, user]);
+
+  useEffect(() => {
+    const sincronizarDesdeLocalStorage = (event) => {
+      if (event.key !== 'valle_sol_reportes' || !event.newValue) return;
+      aplicarReportesEntidad(JSON.parse(event.newValue));
+    };
+    const intervalId = setInterval(cargarHistorial, 10000);
+    window.addEventListener('storage', sincronizarDesdeLocalStorage);
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('storage', sincronizarDesdeLocalStorage);
+    };
+  }, [aplicarReportesEntidad, cargarHistorial]);
 
   const abrirDetalleReporte = (rep) => {
     setModoLectura(true);
@@ -82,7 +113,7 @@ export default function EntidadDashboard() {
       fecha: rep.fecha ? new Date(rep.fecha).toLocaleString() : 'Sin fecha'
     });
     setSelectedCoords([rep.latitud, rep.longitud]);
-    setMostrarModal(true);
+    setReporteSeleccionado(rep);
   };
 
   const handleAbrirGPS = (lat, lng) => {
@@ -91,13 +122,46 @@ export default function EntidadDashboard() {
   };
 
   const handleActualizarEstado = async (id, nuevoEstado) => {
+    // Si la entidad se marca "EN CAMINO" a un caso, primero revertimos cualquier
+    // otro caso que ya tenga "EN CAMINO" de esta misma entidad (solo 1 caso a la vez)
+    if (nuevoEstado.startsWith('EN CAMINO')) {
+      const casosEnCamino = historial.filter(r => r.id !== id && r.estado?.startsWith('EN CAMINO'));
+      for (const caso of casosEnCamino) {
+        try {
+          await api.put(`/editar/${caso.id}`, { estado: 'PENDIENTE' });
+        } catch {
+          console.warn("API offline. Revirtiendo estado localmente...");
+        }
+      }
+      // Actualizar localStorage para los casos revertidos
+      const stored = localStorage.getItem('valle_sol_reportes');
+      if (stored) {
+        const list = JSON.parse(stored);
+        const updatedList = list.map(r => {
+          if (r.id === id) return { ...r, estado: nuevoEstado };
+          if (casosEnCamino.some(c => c.id === r.id)) return { ...r, estado: 'PENDIENTE' };
+          return r;
+        });
+        localStorage.setItem('valle_sol_reportes', JSON.stringify(updatedList));
+      }
+      // Actualizar historial local: revertir anteriores + marcar el seleccionado
+      setHistorial(prev => prev.map(r => {
+        if (r.id === id) return { ...r, estado: nuevoEstado };
+        if (casosEnCamino.some(c => c.id === r.id)) return { ...r, estado: 'PENDIENTE' };
+        return r;
+      }));
+      setReporteSeleccionado(prev => prev?.id === id ? { ...prev, estado: nuevoEstado } : prev);
+      mostrarToast(`Unidad despachada al caso seleccionado.`, "info");
+      return;
+    }
+
+    // Para otros estados (CONTROLADO, RESUELTO), flujo normal
     try {
       await api.put(`/editar/${id}`, { estado: nuevoEstado });
-    } catch (err) {
+    } catch {
       console.warn("API offline. Actualizando estado localmente...");
     }
 
-    // Actualizar en localStorage
     const stored = localStorage.getItem('valle_sol_reportes');
     if (stored) {
       const list = JSON.parse(stored);
@@ -108,12 +172,13 @@ export default function EntidadDashboard() {
     if (nuevoEstado === 'RESUELTO') {
       setHistorial(prev => prev.filter(r => r.id !== id));
       setSelectedCoords(null);
+      setReporteSeleccionado(null);
       mostrarToast("Emergencia finalizada y cerrada con éxito.", "success");
     } else {
       setHistorial(prev => prev.map(r => r.id === id ? { ...r, estado: nuevoEstado } : r));
+      setReporteSeleccionado(prev => prev?.id === id ? { ...prev, estado: nuevoEstado } : prev);
       mostrarToast(`Estado de la emergencia actualizado a: ${nuevoEstado}`, "info");
     }
-
   };
 
   const statsData = [
@@ -136,10 +201,10 @@ export default function EntidadDashboard() {
 
       <Sidebar onRefresh={cargarHistorial} />
 
-      <main className="flex-1 ml-16 md:ml-64 p-4 md:p-8 overflow-y-auto transition-all duration-300">
-        <header className="flex justify-between items-center mb-8">
+      <main className="flex-1 ml-16 md:ml-64 p-4 md:p-5 overflow-y-auto transition-all duration-300">
+        <header className="max-w-[1500px] mx-auto flex justify-between items-center mb-4">
           <div>
-            <h1 className="text-3xl font-black text-white uppercase tracking-tight italic">Mando de Despliegue</h1>
+            <h1 className="text-2xl font-black text-white uppercase tracking-tight italic">Mando de Despliegue</h1>
             <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1 italic">Monitoreo de focos activos y rutas en terreno</p>
           </div>
 
@@ -157,13 +222,13 @@ export default function EntidadDashboard() {
           </div>
         </header>
 
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <section className="max-w-[1500px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           {statsData.map((stat, i) => (
-            <StatCard key={i} {...stat} />
+            <StatCard key={i} {...stat} compact />
           ))}
         </section>
 
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <section className="max-w-[1500px] mx-auto grid grid-cols-1 lg:grid-cols-3 gap-5">
           <EmergencyMap 
             user={user}
             historial={historial}
@@ -173,14 +238,27 @@ export default function EntidadDashboard() {
             setDatosReporte={setDatosReporte}
             modoLectura={modoLectura}
             abrirDetalleReporte={abrirDetalleReporte}
+            compact
           />
 
           <div>
-            <div className="bg-blue-950/20 border border-blue-500/10 p-4 rounded-3xl mb-4 flex items-center gap-3 text-blue-400 uppercase tracking-widest text-[9px] font-black italic">
+            <div className="bg-blue-950/20 border border-blue-500/10 px-4 py-2.5 rounded-2xl mb-3 flex items-center gap-3 text-blue-400 uppercase tracking-widest text-[9px] font-black italic">
               <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
               Feed en Tiempo Real - Despacho Activo
             </div>
-            <HistorySidebar historial={historial} onSelect={abrirDetalleReporte} />
+            {reporteSeleccionado ? (
+              <EmergencyController
+                reporte={reporteSeleccionado}
+                onBack={() => {
+                  setReporteSeleccionado(null);
+                  setSelectedCoords(null);
+                }}
+                onActualizarEstado={handleActualizarEstado}
+                onAbrirGPS={handleAbrirGPS}
+              />
+            ) : (
+              <HistorySidebar historial={historial} onSelect={abrirDetalleReporte} compact />
+            )}
           </div>
         </section>
       </main>

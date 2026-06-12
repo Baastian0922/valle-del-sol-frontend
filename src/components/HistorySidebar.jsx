@@ -1,7 +1,7 @@
 import React from 'react';
 import { Bell } from 'lucide-react';
 
-const HistorySidebar = ({ historial, onSelect }) => {
+const HistorySidebar = ({ historial, onSelect, compact = false }) => {
   const getStatusStyle = (estado) => {
     if (estado === 'RESUELTO') {
       return { borderColor: '#10b981', dotClass: 'bg-emerald-500' };
@@ -16,8 +16,8 @@ const HistorySidebar = ({ historial, onSelect }) => {
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-6 shadow-2xl flex flex-col h-[500px]">
-      <h3 className="font-bold text-white uppercase tracking-widest text-sm mb-6 flex items-center gap-2 italic tracking-tighter">
+    <div className={`bg-slate-900 border border-slate-800 shadow-2xl flex flex-col h-[500px] ${compact ? 'rounded-3xl p-4' : 'rounded-[2.5rem] p-6'}`}>
+      <h3 className={`font-bold text-white uppercase tracking-widest text-sm flex items-center gap-2 italic tracking-tighter ${compact ? 'mb-4' : 'mb-6'}`}>
         <Bell size={16} className="text-red-500" /> Historial de Alertas
       </h3>
       
