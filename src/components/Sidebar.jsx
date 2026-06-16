@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { auth } from '../services/firebase-config';
 import { signOut } from 'firebase/auth';
 
-const Sidebar = ({ onRefresh, onShowUsers, vistaActiva = 'monitoreo', setVistaActiva }) => {
+const Sidebar = ({ onRefresh, onShowUsers, onShowEntityValidation, vistaActiva = 'monitoreo', setVistaActiva }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -37,7 +37,7 @@ const Sidebar = ({ onRefresh, onShowUsers, vistaActiva = 'monitoreo', setVistaAc
         <div className="bg-red-600 p-2 rounded-lg text-white shadow-lg shrink-0"><Flame size={20} /></div>
         <span className="hidden md:inline font-black tracking-tighter text-white uppercase text-lg italic">Valle del Sol</span>
       </div>
-      
+
       {/* Información del Perfil en Sidebar */}
       <div className="p-3 md:p-4 border-b border-slate-800/60 bg-slate-950/20 flex justify-center md:justify-start">
         <div className="flex items-center gap-3">
@@ -59,7 +59,7 @@ const Sidebar = ({ onRefresh, onShowUsers, vistaActiva = 'monitoreo', setVistaAc
       </div>
 
       <nav className="flex-1 p-2 md:p-4 space-y-2 mt-2">
-        <button 
+        <button
           onClick={() => setVistaActiva && setVistaActiva('monitoreo')}
           className={`w-full flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${vistaActiva === 'monitoreo' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
         >
@@ -68,7 +68,7 @@ const Sidebar = ({ onRefresh, onShowUsers, vistaActiva = 'monitoreo', setVistaAc
         </button>
 
         {user?.role === 'ADMIN' && (
-          <button 
+          <button
             onClick={() => setVistaActiva && setVistaActiva('historial')}
             className={`w-full flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${vistaActiva === 'historial' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
           >
@@ -84,6 +84,13 @@ const Sidebar = ({ onRefresh, onShowUsers, vistaActiva = 'monitoreo', setVistaAc
           </button>
         )}
 
+        {user?.role === 'ADMIN' && onShowEntityValidation && (
+          <button onClick={onShowEntityValidation} className="w-full flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl font-bold transition-all text-xs uppercase tracking-wider">
+            <ShieldAlert size={18} className="shrink-0" />
+            <span className="hidden md:inline">Validar Entidades</span>
+          </button>
+        )}
+
         {onRefresh && (
           <button onClick={onRefresh} className="w-full flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl font-bold transition-all text-xs uppercase tracking-wider">
             <RotateCcw size={18} className="shrink-0" />
@@ -91,7 +98,7 @@ const Sidebar = ({ onRefresh, onShowUsers, vistaActiva = 'monitoreo', setVistaAc
           </button>
         )}
       </nav>
-      
+
       <div className="p-3 md:p-4 border-t border-slate-800 flex justify-center md:justify-start">
          <button onClick={handleSalir} className="w-full flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 text-red-400 font-bold hover:bg-red-400/10 rounded-xl transition-all text-xs uppercase tracking-wider">
            <LogOut size={18} className="shrink-0" />

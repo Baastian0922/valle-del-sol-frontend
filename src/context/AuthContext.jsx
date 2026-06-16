@@ -38,6 +38,15 @@ export function AuthProvider({ children }) {
 
           if (docSnap.exists()) {
             datosAdicionales = docSnap.data();
+
+            // Bloquear e invalidar sesión si la cuenta está inactiva/pendiente
+            if (datosAdicionales?.activo === false || datosAdicionales?.active === false) {
+              await signOut(auth);
+              setUser(null);
+              setLoading(false);
+              return;
+            }
+
             const rawRole = datosAdicionales?.rol || datosAdicionales?.role || '';
 
             const diccionarioRoles = {
@@ -80,18 +89,26 @@ export function AuthProvider({ children }) {
   // Se activa cuando hay un usuario logueado (para el panel de administración)
   useEffect(() => {
     if (!user) {
-      setUsuarios([]);
-      setCargandoUsuarios(false);
-      return;
+      const resetTimer = setTimeout(() => {
+        setUsuarios([]);
+        setCargandoUsuarios(false);
+      }, 0);
+      return () => clearTimeout(resetTimer);
     }
 
-    setCargandoUsuarios(true);
+    const loadingTimer = setTimeout(() => {
+      setCargandoUsuarios(true);
+    }, 0);
+
     const unsubscribe = escucharUsuariosFirebase((listaUsuarios) => {
       setUsuarios(listaUsuarios);
       setCargandoUsuarios(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(loadingTimer);
+      unsubscribe();
+    };
   }, [user]);
 
   // ── Cierre de Sesión Real con Firebase ──────────────────────────────────────

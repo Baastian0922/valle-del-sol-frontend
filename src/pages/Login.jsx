@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Flame, Lock, ArrowRight, AlertCircle, Mail, ShieldCheck } from 'lucide-react';
 
 // ── Firebase ──────────────────────────────────────────────────────────────────
@@ -33,7 +33,7 @@ const rutaPorRol = {
   bombero:       '/dashboard',
   vecino:        '/dashboard',
   entidad:       '/dashboard',
-  comunidad:     '/dashboard', 
+  comunidad:     '/dashboard',
   user:          '/dashboard',
   emergency_entity: '/dashboard'
 };
@@ -41,12 +41,13 @@ const rutaPorRol = {
 // =============================================================================
 function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [mensajeExito, setMensajeExito] = useState(location.state?.mensajeExito || '');
 
   // Estados del formulario
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [mensajeExito, setMensajeExito] = useState('');
   const [cargando, setCargando] = useState(false);
   const [enviandoRecuperacion, setEnviandoRecuperacion] = useState(false);
   const [modoRecuperacion, setModoRecuperacion] = useState(false);
@@ -107,6 +108,12 @@ function Login() {
       }
 
       const datos = docSnap.data();
+
+      if (datos?.active === false) {
+        setError('Tu cuenta de respondedor oficial se encuentra en revisión. El Administrador de la Municipalidad debe validar y aprobar tu solicitud antes de ingresar.');
+        await auth.signOut();
+        return;
+      }
       const rawRol = datos?.rol || datos?.role || '';
       const rolNormalizado = rawRol.toLowerCase().trim();
 
@@ -271,97 +278,97 @@ function Login() {
           ) : (
             <form onSubmit={handleLoginSubmit} className="space-y-5" noValidate>
 
-            {/* Correo Electrónico */}
-            <div className="space-y-2">
-              <label htmlFor="email" className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">
-                Correo Electrónico
-              </label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500 group-focus-within:text-red-500 transition-colors pointer-events-none">
-                  <Mail size={18} />
+              {/* Correo Electrónico */}
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">
+                  Correo Electrónico
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500 group-focus-within:text-red-500 transition-colors pointer-events-none">
+                    <Mail size={18} />
+                  </div>
+                  <input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="usuario@municipalidad.cl"
+                    disabled={formularioBloqueado}
+                    className="w-full bg-slate-950 border border-slate-800 text-white pl-11 pr-4 py-3 rounded-xl focus:outline-none focus:border-red-600/60 focus:ring-1 focus:ring-red-600/40 transition-all placeholder:text-slate-700 font-semibold text-sm disabled:opacity-50"
+                  />
                 </div>
-                <input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="usuario@municipalidad.cl"
-                  disabled={formularioBloqueado}
-                  className="w-full bg-slate-950 border border-slate-800 text-white pl-11 pr-4 py-3 rounded-xl focus:outline-none focus:border-red-600/60 focus:ring-1 focus:ring-red-600/40 transition-all placeholder:text-slate-700 font-semibold text-sm disabled:opacity-50"
-                />
               </div>
-            </div>
 
-            {/* Contraseña */}
-            <div className="space-y-2">
-              <label htmlFor="password" className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">
-                Contraseña
-              </label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500 group-focus-within:text-red-500 transition-colors pointer-events-none">
-                  <Lock size={18} />
+              {/* Contraseña */}
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">
+                  Contraseña
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500 group-focus-within:text-red-500 transition-colors pointer-events-none">
+                    <Lock size={18} />
+                  </div>
+                  <input
+                    id="password"
+                    type="password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    disabled={formularioBloqueado}
+                    className="w-full bg-slate-950 border border-slate-800 text-white pl-11 pr-4 py-3 rounded-xl focus:outline-none focus:border-red-600/60 focus:ring-1 focus:ring-red-600/40 transition-all placeholder:text-slate-700 disabled:opacity-50"
+                  />
                 </div>
-                <input
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  disabled={formularioBloqueado}
-                  className="w-full bg-slate-950 border border-slate-800 text-white pl-11 pr-4 py-3 rounded-xl focus:outline-none focus:border-red-600/60 focus:ring-1 focus:ring-red-600/40 transition-all placeholder:text-slate-700 disabled:opacity-50"
-                />
+                <p className="text-[10px] text-slate-600 ml-1 mt-1">
+                  Mín. 8 caracteres · Mayúscula · Minúscula · Número · Símbolo (@$!%*?&amp;)
+                </p>
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={abrirRecuperacion}
+                    disabled={formularioBloqueado}
+                    className="text-xs text-red-500/80 hover:text-red-400 hover:underline font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                </div>
               </div>
-              <p className="text-[10px] text-slate-600 ml-1 mt-1">
-                Mín. 8 caracteres · Mayúscula · Minúscula · Número · Símbolo (@$!%*?&amp;)
-              </p>
-              <div className="text-right">
-                <button
-                  type="button"
-                  onClick={abrirRecuperacion}
-                  disabled={formularioBloqueado}
-                  className="text-xs text-red-500/80 hover:text-red-400 hover:underline font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  ¿Olvidaste tu contraseña?
-                </button>
+
+              {/* Botón Iniciar Sesión */}
+              <button
+                id="btn-login"
+                type="submit"
+                disabled={formularioBloqueado}
+                className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-900 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-red-600/20 group uppercase tracking-widest text-xs mt-2"
+              >
+                {cargando ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                    Autenticando...
+                  </>
+                ) : (
+                  <>
+                    Iniciar Sesión
+                    <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </button>
+
+              {/* 🔥 EL ACCESO INTEGRADO: Dentro de la tarjeta para visibilidad total */}
+              <div className="text-center mt-5 pt-4 border-t border-slate-800/60">
+                <p className="text-slate-400 text-xs font-medium">
+                  ¿Eres vecino de la comuna y no tienes cuenta?{' '}
+                  <Link to="/register" className="text-red-500 hover:text-red-400 font-bold underline transition-colors block mt-1">
+                    Regístrate aquí
+                  </Link>
+                </p>
               </div>
-            </div>
 
-            {/* Botón Iniciar Sesión */}
-            <button
-              id="btn-login"
-              type="submit"
-              disabled={formularioBloqueado}
-              className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-900 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-red-600/20 group uppercase tracking-widest text-xs mt-2"
-            >
-              {cargando ? (
-                <>
-                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                  Autenticando...
-                </>
-              ) : (
-                <>
-                  Iniciar Sesión
-                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                </>
-              )}
-            </button>
-
-            {/* 🔥 EL ACCESO INTEGRADO: Dentro de la tarjeta para visibilidad total */}
-            <div className="text-center mt-5 pt-4 border-t border-slate-800/60">
-              <p className="text-slate-400 text-xs font-medium">
-                ¿Eres vecino de la comuna y no tienes cuenta?{' '}
-                <Link to="/register" className="text-red-500 hover:text-red-400 font-bold underline transition-colors block mt-1">
-                  Regístrate aquí
-                </Link>
-              </p>
-            </div>
-
-          </form>
+            </form>
           )}
         </div>
 
