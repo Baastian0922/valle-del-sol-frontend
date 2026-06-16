@@ -56,7 +56,7 @@ export default function VecinoDashboard() {
     try {
       const response = await api.get('/sincronizar');
       localStorage.setItem('valle_sol_reportes', JSON.stringify(response.data));
-      setHistorial(response.data.filter(r => r.titulo.toLowerCase().includes('comunidad') || r.estado === 'PENDIENTE'));
+      setHistorial(response.data);
     } catch {
       console.warn("Backend offline o error al sincronizar. Cargando desde LocalStorage...");
       const stored = localStorage.getItem('valle_sol_reportes');
@@ -65,7 +65,7 @@ export default function VecinoDashboard() {
         reportesList = DEFAULT_ALERTAS;
         localStorage.setItem('valle_sol_reportes', JSON.stringify(DEFAULT_ALERTAS));
       }
-      setHistorial(reportesList.filter(r => r.titulo.toLowerCase().includes('comunidad') || r.estado === 'PENDIENTE'));
+      setHistorial(reportesList);
     }
   };
 
@@ -144,7 +144,7 @@ export default function VecinoDashboard() {
     const sincronizarDesdeLocalStorage = (event) => {
       if (event.key !== 'valle_sol_reportes' || !event.newValue) return;
       const reportes = JSON.parse(event.newValue);
-      setHistorial(reportes.filter(r => r.titulo.toLowerCase().includes('comunidad') || r.estado === 'PENDIENTE'));
+      setHistorial(reportes);
     };
 
     const intervalId = setInterval(cargarHistorial, 10000);
@@ -301,7 +301,7 @@ export default function VecinoDashboard() {
       </main>
 
       {toast.mostrar && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-900/95 backdrop-blur-md border border-slate-700/50 text-slate-100 px-6 py-4 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] max-w-md transition-all duration-300 animate-slide-up">
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[200] flex items-center gap-3 bg-slate-900/95 backdrop-blur-md border border-slate-700/50 text-slate-100 px-6 py-4 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] max-w-md transition-all duration-300 animate-slide-up">
           {toast.tipo === 'success' && <CheckCircle className="text-emerald-400 w-5 h-5 flex-shrink-0 animate-pulse" />}
           {toast.tipo === 'warning' && <AlertCircle className="text-amber-400 w-5 h-5 flex-shrink-0" />}
           {toast.tipo === 'info' && <AlertCircle className="text-blue-400 w-5 h-5 flex-shrink-0" />}
