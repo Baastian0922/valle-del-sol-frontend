@@ -173,7 +173,7 @@ export default function VecinoDashboard() {
       reporteCreado = response.data;
     } catch (error) {
       if (error.response && error.response.status === 429) {
-        mostrarToast("Límite diario alcanzado: Máximo 3 reportes para evitar spam.", "warning");
+        mostrarToast("Límite de alertas alcanzado: Máximo 5 reportes cada 10 horas.", "warning");
         setEnviando(false);
         return;
       }

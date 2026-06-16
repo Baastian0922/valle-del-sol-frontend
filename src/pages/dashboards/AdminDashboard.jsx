@@ -7,7 +7,7 @@ import StatCard from '../../components/StatCard';
 import ReporteModal from '../../components/ReporteModal';
 import HistorySidebar from '../../components/HistorySidebar';
 import UserManagementModal from '../../components/UserManagementModal';
-import EntityValidationModal from '../../components/EntityValidationModal';
+import EntityValidationPanel from '../../components/EntityValidationPanel';
 import EntityListModal from '../../components/EntityListModal';
 import EmergencyMap from '../../components/EmergencyMap';
 import SavedReportsHistory from '../../components/SavedReportsHistory';
@@ -35,6 +35,7 @@ export default function AdminDashboard() {
   const [toastTimeoutId, setToastTimeoutId] = useState(null);
   const [vistaActiva, setVistaActiva] = useState('monitoreo'); // 'monitoreo' | 'historial'
   const [reporteSeleccionado, setReporteSeleccionado] = useState(null);
+  const [reporteHistorialSeleccionado, setReporteHistorialSeleccionado] = useState(null);
   const [metricNow] = useState(() => Date.now());
 
 
@@ -84,6 +85,20 @@ export default function AdminDashboard() {
     return () => clearTimeout(timer);
   }, [cargarHistorial, user]);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setReporteHistorialSeleccionado(null);
+        setReporteSeleccionado(null);
+        setMostrarModalEntidades(false);
+        setMostrarModal(false);
+        setMostrarUserMgmt(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const abrirDetalleReporte = (rep) => {
     setModoLectura(true);
     setDatosReporte({
@@ -93,10 +108,16 @@ export default function AdminDashboard() {
       latitud: rep.latitud,
       longitud: rep.longitud,
       estado: rep.estado || 'PENDIENTE',
-      fecha: rep.fecha ? new Date(rep.fecha).toLocaleString() : 'Sin fecha'
+      fecha: rep.fecha || rep.fechaCreacion ? new Date(rep.fecha || rep.fechaCreacion).toLocaleString() : 'Sin fecha',
+      fechaCreacion: rep.fechaCreacion || rep.fecha
     });
     setSelectedCoords([rep.latitud, rep.longitud]);
     setReporteSeleccionado(rep);
+    setVistaActiva('monitoreo');
+  };
+
+  const abrirDetalleReporteHistorial = (rep) => {
+    setReporteHistorialSeleccionado(rep);
   };
 
   const prepararNuevoReporte = (lat = -33.4372, lng = -70.6506) => {
@@ -297,7 +318,7 @@ export default function AdminDashboard() {
 
 
   // Cálculos para las métricas superiores
-  const resolvedAlerts = historial.filter(r => r.estado === 'RESUELTO').length;
+  const resolvedAlerts = historial.filter(r => r.estado === 'RESUELTO' || r.estado === 'CONTROLADO').length;
   const totalAlerts = historial.length;
   const serviceLevel = totalAlerts > 0 ? Math.round((resolvedAlerts / totalAlerts) * 100) : 100;
 
@@ -370,7 +391,7 @@ export default function AdminDashboard() {
       icon: <TrendingUp size={20} />,
       color: serviceLevelColor,
       bg: serviceLevelBg,
-      secondaryText: `${resolvedAlerts} cerrados de ${totalAlerts} totales`,
+      secondaryText: `${resolvedAlerts} controlados/resueltos de ${totalAlerts} totales`,
       renderFooter: () => (
         <div className="mt-3 space-y-1">
           <div className="h-2 w-full bg-slate-950 rounded-full border border-slate-800/80 overflow-hidden relative">
@@ -428,29 +449,32 @@ export default function AdminDashboard() {
         setMostrar={setMostrarUserMgmt}
       />
 
-      <EntityValidationModal
-        mostrar={mostrarValidarEntidades}
-        setMostrar={setMostrarValidarEntidades}
-      />
-
       <Sidebar
         onRefresh={cargarHistorial}
         onShowUsers={() => setMostrarUserMgmt(true)}
-        onShowEntityValidation={() => setMostrarValidarEntidades(true)}
+        onShowEntityValidation={() => setVistaActiva('validar-entidades')}
         vistaActiva={vistaActiva}
         setVistaActiva={setVistaActiva}
       />
 
 
-      <main className="flex-1 ml-16 md:ml-64 p-4 md:p-8 overflow-y-auto transition-all duration-300">
-        <header className="flex justify-between items-center mb-8">
+      <main className="flex-1 ml-16 md:ml-64 p-3 md:p-4 overflow-y-auto transition-all duration-300">
+        <header className="flex justify-between items-center mb-3">
 
           <div>
-            <h1 className="text-3xl font-black text-white uppercase tracking-tight italic">
-              {vistaActiva === 'monitoreo' ? 'Consola de Administración' : 'Reporte Histórico'}
+            <h1 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight italic">
+              {vistaActiva === 'monitoreo' 
+                ? 'Consola de Administración' 
+                : vistaActiva === 'historial' 
+                ? 'Reporte Histórico' 
+                : 'Validación de Entidades'}
             </h1>
-            <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1 italic">
-              {vistaActiva === 'monitoreo' ? 'Acceso y control total de emergencias forestales' : 'Auditoría y registro completo de alertas en la comuna'}
+            <p className="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-0.5 italic">
+              {vistaActiva === 'monitoreo' 
+                ? 'Acceso y control total de emergencias forestales' 
+                : vistaActiva === 'historial' 
+                ? 'Auditoría y registro completo de alertas en la comuna' 
+                : 'Aprobación y control de acceso para entidades de emergencia'}
             </p>
           </div>
 
@@ -467,40 +491,39 @@ export default function AdminDashboard() {
             </div>
           </div>
         </header>
-
-        {vistaActiva === 'monitoreo' ? (
+        {vistaActiva === 'monitoreo' && (
           <>
             {/* Banner de Solicitudes de Validación Pendientes */}
             {usuarios.filter(u => u.active === false).length > 0 && (
-              <div className="bg-amber-600/10 border border-amber-500/20 p-4 rounded-3xl mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-pulse">
-                <div className="flex items-center gap-3">
-                  <div className="bg-amber-500/10 text-amber-500 p-2.5 rounded-2xl border border-amber-500/20 shrink-0">
-                    <ShieldAlert size={22} />
+              <div className="bg-amber-600/10 border border-amber-500/20 p-2 px-3.5 rounded-2xl mb-3 flex items-center justify-between gap-4 animate-pulse">
+                <div className="flex items-center gap-2.5">
+                  <div className="bg-amber-500/10 text-amber-500 p-1.5 rounded-lg border border-amber-500/20 shrink-0">
+                    <ShieldAlert size={16} />
                   </div>
                   <div>
-                    <h4 className="text-xs font-black text-white uppercase tracking-tight">Solicitudes de Validación Pendientes</h4>
-                    <p className="text-[10px] text-amber-500 font-bold uppercase tracking-widest mt-0.5">
-                      Hay {usuarios.filter(u => u.active === false).length} {usuarios.filter(u => u.active === false).length === 1 ? 'entidad de emergencia esperando' : 'entidades de emergencia esperando'} aprobación
+                    <h4 className="text-[10px] font-black text-white uppercase tracking-tight">Solicitudes Pendientes</h4>
+                    <p className="text-[8px] text-amber-500 font-bold uppercase tracking-widest mt-0.5">
+                      Hay {usuarios.filter(u => u.active === false).length} esperando validación
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setMostrarValidarEntidades(true)}
-                  className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-[9px] uppercase tracking-widest px-4 py-2 rounded-xl transition-all self-start sm:self-center shadow-lg shadow-amber-950/20"
+                  onClick={() => setVistaActiva('validar-entidades')}
+                  className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-[8px] uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all shadow-md shadow-amber-950/10 shrink-0"
                 >
                   Revisar y Validar
                 </button>
               </div>
             )}
 
-            <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
               {statsData.map((stat, i) => (
-                <StatCard key={i} {...stat} />
+                <StatCard key={i} {...stat} compact />
               ))}
             </section>
 
-            <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-5">
               <EmergencyMap
                 user={user}
                 historial={historial}
@@ -516,15 +539,15 @@ export default function AdminDashboard() {
               <div>
                 {reporteSeleccionado ? (
                   <AdminEmergencyController
-                    reporte={reporteSeleccionado}
-                    onBack={() => {
-                      setReporteSeleccionado(null);
-                      setSelectedCoords(null);
-                    }}
-                    onActualizarEstado={handleActualizarEstado}
-                    onAbrirGPS={handleAbrirGPS}
-                    onDelete={handleDeleteReporte}
-                    userName={user?.fullName}
+                     reporte={reporteSeleccionado}
+                     onBack={() => {
+                       setReporteSeleccionado(null);
+                       setSelectedCoords(null);
+                     }}
+                     onActualizarEstado={handleActualizarEstado}
+                     onAbrirGPS={handleAbrirGPS}
+                     onDelete={handleDeleteReporte}
+                     userName={user?.fullName}
                   />
                 ) : (
                   <>
@@ -556,12 +579,18 @@ export default function AdminDashboard() {
               </div>
             </section>
           </>
-        ) : (
+        )}
+
+        {vistaActiva === 'historial' && (
           <SavedReportsHistory
             reportes={historial}
-            onSelectReporte={abrirDetalleReporte}
+            onSelectReporte={abrirDetalleReporteHistorial}
             onDeleteMultiple={handleDeleteMultiple}
           />
+        )}
+
+        {vistaActiva === 'validar-entidades' && (
+          <EntityValidationPanel />
         )}
       </main>
 
@@ -573,6 +602,32 @@ export default function AdminDashboard() {
         setMostrar={setMostrarModalEntidades}
         usuarios={usuarios}
       />
+
+      {reporteHistorialSeleccionado && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[150] flex items-center justify-center p-4">
+          <AdminEmergencyController
+            reporte={{
+              ...reporteHistorialSeleccionado,
+              fecha: reporteHistorialSeleccionado.fecha || reporteHistorialSeleccionado.fechaCreacion 
+                ? new Date(reporteHistorialSeleccionado.fecha || reporteHistorialSeleccionado.fechaCreacion).toLocaleString() 
+                : 'Sin fecha',
+              fechaCreacion: reporteHistorialSeleccionado.fechaCreacion || reporteHistorialSeleccionado.fecha
+            }}
+            onBack={() => setReporteHistorialSeleccionado(null)}
+            onActualizarEstado={(id, nuevoEstado) => {
+              handleActualizarEstado(id, nuevoEstado);
+              setReporteHistorialSeleccionado(prev => prev && prev.id === id ? { ...prev, estado: nuevoEstado } : prev);
+            }}
+            onAbrirGPS={handleAbrirGPS}
+            onDelete={(id) => {
+              handleDeleteReporte(id);
+              setReporteHistorialSeleccionado(null);
+            }}
+            userName={user?.fullName}
+            isModal={true}
+          />
+        </div>
+      )}
 
       {toast.mostrar && (
         <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[200] flex items-center gap-3 bg-slate-900/95 backdrop-blur-md border border-slate-700/50 text-slate-100 px-6 py-4 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] max-w-md transition-all duration-300 animate-slide-up">

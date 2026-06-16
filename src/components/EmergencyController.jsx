@@ -1,12 +1,12 @@
 import React from 'react';
-import { ArrowLeft, Flame, MapPin, Navigation, Radio, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Flame, MapPin, Navigation, Radio, ShieldCheck, MessageCircle } from 'lucide-react';
 
 const estados = [
   { value: 'EN CAMINO', label: 'Marcar en camino', className: 'bg-blue-600 hover:bg-blue-500' },
   { value: 'CONTROLADO', label: 'Marcar controlado', className: 'bg-amber-600 hover:bg-amber-500' }
 ];
 
-export default function EmergencyController({ reporte, onBack, onActualizarEstado, onAbrirGPS }) {
+export default function EmergencyController({ reporte, onBack, onActualizarEstado, onAbrirGPS, onVerChat }) {
   return (
     <aside className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-6 shadow-2xl min-h-[500px]">
       <div className="flex items-center gap-3 pb-5 border-b border-slate-800">
@@ -38,6 +38,13 @@ export default function EmergencyController({ reporte, onBack, onActualizarEstad
         className="w-full mb-3 px-4 py-3 bg-slate-950 hover:bg-slate-800 border border-slate-700 text-white rounded-xl font-black uppercase text-[10px] tracking-widest transition-colors flex items-center justify-center gap-2"
       >
         <Navigation size={14} /> Abrir ruta GPS
+      </button>
+
+      <button
+        onClick={onVerChat}
+        className="w-full mb-3 px-4 py-3 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-500/20 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-2"
+      >
+        <MessageCircle size={14} /> Ver Chat Comunitario
       </button>
 
       <div className="space-y-2">

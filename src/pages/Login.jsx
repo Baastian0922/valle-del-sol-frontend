@@ -42,6 +42,8 @@ const rutaPorRol = {
 function Login() {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const typeParam = queryParams.get('type') || 'comunidad';
   const [mensajeExito, setMensajeExito] = useState(location.state?.mensajeExito || '');
 
   // Estados del formulario
@@ -194,7 +196,7 @@ function Login() {
             Valle del Sol
           </h1>
           <p className="text-slate-500 mt-1 text-xs font-bold uppercase tracking-widest">
-            Consola de Acceso Municipal
+            {typeParam === 'entidad' ? 'Consola de Acceso Entidades' : 'Consola de Acceso Comunidad'}
           </p>
         </div>
 
@@ -360,12 +362,21 @@ function Login() {
 
               {/* 🔥 EL ACCESO INTEGRADO: Dentro de la tarjeta para visibilidad total */}
               <div className="text-center mt-5 pt-4 border-t border-slate-800/60">
-                <p className="text-slate-400 text-xs font-medium">
-                  ¿Eres vecino de la comuna y no tienes cuenta?{' '}
-                  <Link to="/register" className="text-red-500 hover:text-red-400 font-bold underline transition-colors block mt-1">
-                    Regístrate aquí
-                  </Link>
-                </p>
+                {typeParam === 'entidad' ? (
+                  <p className="text-slate-400 text-xs font-medium">
+                    ¿Tu institución no está registrada?{' '}
+                    <Link to="/register?type=entidad" className="text-red-500 hover:text-red-400 font-bold underline transition-colors block mt-1">
+                      Inscribe tu entidad de emergencia aquí
+                    </Link>
+                  </p>
+                ) : (
+                  <p className="text-slate-400 text-xs font-medium">
+                    ¿Eres vecino de la comuna y no tienes cuenta?{' '}
+                    <Link to="/register?type=comunidad" className="text-red-500 hover:text-red-400 font-bold underline transition-colors block mt-1">
+                      Regístrate aquí
+                    </Link>
+                  </p>
+                )}
               </div>
 
             </form>

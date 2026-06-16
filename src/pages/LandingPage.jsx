@@ -10,9 +10,15 @@ function LandingPage() {
           <Flame className="text-red-500" size={32} />
           <span className="text-xl font-black tracking-tighter">VALLE DEL SOL</span>
         </div>
-        <Link to="/login" className="text-sm font-bold hover:text-red-500 transition">
-          ACCESO PERSONAL
-        </Link>
+        <div className="flex items-center gap-3 md:gap-4 text-xs md:text-sm">
+          <Link to="/login?type=comunidad" className="font-bold hover:text-red-500 transition uppercase tracking-wider">
+            Acceso Comunidad
+          </Link>
+          <span className="text-white/60 font-light">/</span>
+          <Link to="/login?type=entidad" className="font-bold hover:text-red-500 transition uppercase tracking-wider">
+            Acceso como Entidad
+          </Link>
+        </div>
       </nav>
 
       {/* Hero Section */}

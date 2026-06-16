@@ -8,6 +8,7 @@ import ReporteModal from '../../components/ReporteModal';
 import HistorySidebar from '../../components/HistorySidebar';
 import EmergencyMap from '../../components/EmergencyMap';
 import EmergencyController from '../../components/EmergencyController';
+import EmergencyChat from '../../components/EmergencyChat';
 import EntityListModal from '../../components/EntityListModal';
 
 import { Flame, ShieldAlert, Users, TrendingUp, CheckCircle, AlertCircle, X, Shield, Clock } from 'lucide-react';
@@ -41,6 +42,7 @@ export default function EntidadDashboard() {
   const [archivo, setArchivo] = useState(null);
   const [selectedCoords, setSelectedCoords] = useState(null);
   const [reporteSeleccionado, setReporteSeleccionado] = useState(null);
+  const [verChat, setVerChat] = useState(false);
 
   const [datosReporte, setDatosReporte] = useState({
     id: null, titulo: '', descripcion: '', latitud: -33.4372, longitud: -70.6506, estado: 'PENDIENTE', fecha: ''
@@ -119,6 +121,7 @@ export default function EntidadDashboard() {
     });
     setSelectedCoords([rep.latitud, rep.longitud]);
     setReporteSeleccionado(rep);
+    setVerChat(false);
   };
 
   const handleAbrirGPS = (lat, lng) => {
@@ -187,7 +190,7 @@ export default function EntidadDashboard() {
   };
 
   // Cálculos para las métricas superiores
-  const resolvedAlerts = todosLosReportes.filter(r => r.estado === 'RESUELTO').length;
+  const resolvedAlerts = todosLosReportes.filter(r => r.estado === 'RESUELTO' || r.estado === 'CONTROLADO').length;
   const totalAlerts = todosLosReportes.length;
   const serviceLevel = totalAlerts > 0 ? Math.round((resolvedAlerts / totalAlerts) * 100) : 100;
 
@@ -260,7 +263,7 @@ export default function EntidadDashboard() {
       icon: <TrendingUp size={20} />,
       color: serviceLevelColor,
       bg: serviceLevelBg,
-      secondaryText: `${resolvedAlerts} cerrados de ${totalAlerts} totales`,
+      secondaryText: `${resolvedAlerts} controlados/resueltos de ${totalAlerts} totales`,
       renderFooter: () => (
         <div className="mt-3 space-y-1">
           <div className="h-2 w-full bg-slate-950 rounded-full border border-slate-800/80 overflow-hidden relative">
@@ -359,15 +362,25 @@ export default function EntidadDashboard() {
               Feed en Tiempo Real - Despacho Activo
             </div>
             {reporteSeleccionado ? (
-              <EmergencyController
-                reporte={reporteSeleccionado}
-                onBack={() => {
-                  setReporteSeleccionado(null);
-                  setSelectedCoords(null);
-                }}
-                onActualizarEstado={handleActualizarEstado}
-                onAbrirGPS={handleAbrirGPS}
-              />
+              verChat ? (
+                <EmergencyChat
+                  reporte={reporteSeleccionado}
+                  user={user}
+                  onBack={() => setVerChat(false)}
+                />
+              ) : (
+                <EmergencyController
+                  reporte={reporteSeleccionado}
+                  onBack={() => {
+                    setReporteSeleccionado(null);
+                    setSelectedCoords(null);
+                    setVerChat(false);
+                  }}
+                  onActualizarEstado={handleActualizarEstado}
+                  onAbrirGPS={handleAbrirGPS}
+                  onVerChat={() => setVerChat(true)}
+                />
+              )
             ) : (
               <HistorySidebar historial={historial} onSelect={abrirDetalleReporte} compact />
             )}
