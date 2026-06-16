@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter, Calendar, MapPin, Eye, FileText, Download, X } from 'lucide-react';
+import { Search, Filter, Calendar, MapPin, Eye, FileText, Download, X, Trash2 } from 'lucide-react';
 
 const getReportTimestamp = (fecha) => {
   if (!fecha) return null;
@@ -15,19 +15,45 @@ const getReportTimestamp = (fecha) => {
   return Number.isNaN(fallbackDate.getTime()) ? null : fallbackDate.getTime();
 };
 
-export default function SavedReportsHistory({ reportes, onSelectReporte }) {
+export default function SavedReportsHistory({ reportes, onSelectReporte, onDeleteMultiple }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterEstado, setFilterEstado] = useState('TODOS');
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  // Limpiar selección si cambia la lista filtrada
+  const handleToggleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(filteredReportes.map(r => r.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleToggleSelectOne = (id) => {
+    if (selectedIds.includes(id)) {
+      setSelectedIds(selectedIds.filter(x => x !== id));
+    } else {
+      setSelectedIds([...selectedIds, id]);
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    if (confirm(`¿Estás seguro de eliminar los ${selectedIds.length} reportes seleccionados permanentemente?`)) {
+      onDeleteMultiple(selectedIds);
+      setSelectedIds([]);
+    }
+  };
 
   const rangoInvalido = Boolean(fechaDesde && fechaHasta && fechaDesde > fechaHasta);
 
   const filteredReportes = reportes.filter(rep => {
-    const matchesSearch = 
+    const matchesSearch =
       rep.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       rep.descripcion?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesEstado = filterEstado === 'TODOS' || rep.estado === filterEstado;
     const timestamp = getReportTimestamp(rep.fecha);
     const inicio = fechaDesde ? new Date(`${fechaDesde}T00:00:00`).getTime() : null;
@@ -57,7 +83,7 @@ export default function SavedReportsHistory({ reportes, onSelectReporte }) {
 
   const handleExportCSV = () => {
     if (filteredReportes.length === 0 || rangoInvalido) return;
-    
+
     const headers = ['ID', 'Titulo', 'Descripcion', 'Estado', 'Latitud', 'Longitud', 'Fecha'];
     const rows = filteredReportes.map(r => [
       r.id,
@@ -69,9 +95,9 @@ export default function SavedReportsHistory({ reportes, onSelectReporte }) {
       `"${r.fecha || ''}"`
     ]);
 
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF"
       + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -98,14 +124,25 @@ export default function SavedReportsHistory({ reportes, onSelectReporte }) {
           </p>
         </div>
 
-        {/* Botón Exportar */}
-        <button
-          onClick={handleExportCSV}
-          disabled={filteredReportes.length === 0 || rangoInvalido}
-          className="bg-slate-950 border border-slate-800 hover:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-[10px] font-black uppercase text-slate-300 hover:text-white px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 self-start md:self-auto italic tracking-wider animate-hover-pulse"
-        >
-          <Download size={14} className="text-emerald-500" /> Exportar CSV
-        </button>
+        {/* Botones de Acción */}
+        <div className="flex items-center gap-3 self-start md:self-auto">
+          {selectedIds.length > 0 && onDeleteMultiple && (
+            <button
+              onClick={handleDeleteSelected}
+              className="bg-red-950/80 hover:bg-red-900 border border-red-500/35 text-[10px] font-black uppercase text-red-400 hover:text-white px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 italic tracking-wider shadow-lg shadow-red-950/20"
+            >
+              <Trash2 size={14} className="text-red-500" /> Eliminar Seleccionados ({selectedIds.length})
+            </button>
+          )}
+
+          <button
+            onClick={handleExportCSV}
+            disabled={filteredReportes.length === 0 || rangoInvalido}
+            className="bg-slate-950 border border-slate-800 hover:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-[10px] font-black uppercase text-slate-300 hover:text-white px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 italic tracking-wider animate-hover-pulse"
+          >
+            <Download size={14} className="text-emerald-500" /> Exportar CSV
+          </button>
+        </div>
       </div>
 
       {/* Controles de Búsqueda y Filtro */}
@@ -115,7 +152,7 @@ export default function SavedReportsHistory({ reportes, onSelectReporte }) {
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500 group-focus-within:text-red-500 transition-colors">
             <Search size={16} />
           </div>
-          <input 
+          <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -144,7 +181,7 @@ export default function SavedReportsHistory({ reportes, onSelectReporte }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 mb-6 p-4 rounded-2xl bg-slate-950/40 border border-slate-800/60">
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 mb-6 p-5 rounded-3xl bg-slate-950/40 border border-slate-800/60 backdrop-blur-md">
         <label className="block">
           <span className="block text-[9px] text-slate-500 font-black uppercase tracking-widest mb-2">Desde</span>
           <div className="relative">
@@ -154,7 +191,8 @@ export default function SavedReportsHistory({ reportes, onSelectReporte }) {
               value={fechaDesde}
               max={fechaHasta || undefined}
               onChange={(event) => setFechaDesde(event.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 text-white text-xs pl-11 pr-4 py-3 rounded-xl focus:outline-none focus:border-blue-500"
+              onClick={(e) => e.target.showPicker()}
+              className="w-full inline-flex items-center bg-slate-950/80 border border-slate-800 text-white text-xs pl-11 pr-4 h-12 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 hover:border-slate-700/80 transition-all font-semibold cursor-pointer"
             />
           </div>
         </label>
@@ -168,7 +206,8 @@ export default function SavedReportsHistory({ reportes, onSelectReporte }) {
               value={fechaHasta}
               min={fechaDesde || undefined}
               onChange={(event) => setFechaHasta(event.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 text-white text-xs pl-11 pr-4 py-3 rounded-xl focus:outline-none focus:border-blue-500"
+              onClick={(e) => e.target.showPicker()}
+              className="w-full inline-flex items-center bg-slate-950/80 border border-slate-800 text-white text-xs pl-11 pr-4 h-12 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 hover:border-slate-700/80 transition-all font-semibold cursor-pointer"
             />
           </div>
         </label>
@@ -180,16 +219,16 @@ export default function SavedReportsHistory({ reportes, onSelectReporte }) {
             setFechaHasta('');
           }}
           disabled={!fechaDesde && !fechaHasta}
-          className="self-end px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-colors"
+          className="self-end px-5 h-12 rounded-xl bg-slate-950 border border-slate-800 hover:border-blue-900/50 hover:bg-blue-950/20 hover:text-blue-400 text-slate-400 disabled:opacity-20 disabled:cursor-not-allowed disabled:hover:bg-slate-950 disabled:hover:border-slate-800 disabled:hover:text-slate-400 text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 italic"
         >
           <X size={13} /> Limpiar fechas
         </button>
 
-        <div className="md:col-span-3 flex justify-between gap-4 text-[9px] font-black uppercase tracking-wider">
+        <div className="md:col-span-3 flex justify-between gap-4 text-[9px] font-black uppercase tracking-wider mt-1">
           <span className={rangoInvalido ? 'text-red-400' : 'text-slate-500'}>
             {rangoInvalido ? 'La fecha desde no puede ser posterior a la fecha hasta' : 'El rango incluye ambos días completos'}
           </span>
-          <span className="text-blue-400">{filteredReportes.length} reportes encontrados</span>
+          <span className="text-slate-400">{filteredReportes.length} reportes encontrados</span>
         </div>
       </div>
 
@@ -198,6 +237,19 @@ export default function SavedReportsHistory({ reportes, onSelectReporte }) {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-slate-800 bg-slate-950/40">
+              <th className="p-4 w-12 text-center">
+                <input
+                  type="checkbox"
+                  checked={filteredReportes.length > 0 && selectedIds.length === filteredReportes.length}
+                  ref={el => {
+                    if (el) {
+                      el.indeterminate = selectedIds.length > 0 && selectedIds.length < filteredReportes.length;
+                    }
+                  }}
+                  onChange={handleToggleSelectAll}
+                  className="rounded border-slate-800 text-red-500 focus:ring-red-500 bg-slate-950"
+                />
+              </th>
               <th className="p-4 text-[10px] font-black uppercase tracking-wider text-slate-500">ID</th>
               <th className="p-4 text-[10px] font-black uppercase tracking-wider text-slate-500">Alerta</th>
               <th className="p-4 text-[10px] font-black uppercase tracking-wider text-slate-500">Ubicación</th>
@@ -209,6 +261,14 @@ export default function SavedReportsHistory({ reportes, onSelectReporte }) {
           <tbody className="divide-y divide-slate-800/30">
             {filteredReportes.map((rep) => (
               <tr key={rep.id} className="hover:bg-slate-900/30 transition-colors group">
+                <td className="p-4 text-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(rep.id)}
+                    onChange={() => handleToggleSelectOne(rep.id)}
+                    className="rounded border-slate-800 text-red-500 focus:ring-red-500 bg-slate-950"
+                  />
+                </td>
                 <td className="p-4 text-xs font-mono font-bold text-slate-600">#{rep.id}</td>
                 <td className="p-4 max-w-xs">
                   <p className="text-xs font-bold text-slate-200 group-hover:text-white transition-colors">{rep.titulo}</p>
@@ -243,7 +303,7 @@ export default function SavedReportsHistory({ reportes, onSelectReporte }) {
             ))}
             {filteredReportes.length === 0 && (
               <tr>
-                <td colSpan="6" className="p-8 text-center text-slate-600 text-xs italic">
+                <td colSpan="7" className="p-8 text-center text-slate-600 text-xs italic">
                   No se encontraron reportes guardados que coincidan con la búsqueda.
                 </td>
               </tr>

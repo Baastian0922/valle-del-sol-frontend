@@ -36,3 +36,10 @@
 .emergency-fire-marker svg {
   transform: rotate(45deg);
 }
+
+/* Custom styling for dark-mode date picker indicators */
+/* Hide default native calendar picker indicator */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  display: none !important;
+  -webkit-appearance: none;
+}

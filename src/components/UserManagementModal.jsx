@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { X, UserPlus, Users, Trash2, ToggleLeft, ToggleRight, Shield, ShieldAlert, HeartHandshake, Pencil, Loader2, CloudOff, Database } from 'lucide-react';
+import { X, UserPlus, Users, Trash2, ToggleLeft, ToggleRight, Shield, ShieldAlert, HeartHandshake, Pencil, Loader2, CloudOff, Database, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const UserManagementModal = ({ mostrar, setMostrar }) => {
-  const { 
-    usuarios, cargandoUsuarios, 
+  const {
+    usuarios, cargandoUsuarios,
     crearUsuario, editarUsuario, eliminarUsuario, alternarEstadoUsuario,
-    traducirErrorFirebase 
+    traducirErrorFirebase
   } = useAuth();
-  
+
   // Modos de formulario
   const [usuarioEditando, setUsuarioEditando] = useState(null);
 
@@ -66,8 +66,8 @@ const UserManagementModal = ({ mostrar, setMostrar }) => {
     }
 
     // Validar si el usuario ya existe (excluyendo al usuario editado)
-    const existe = usuarios.some(u => 
-      u.username?.toLowerCase() === username.toLowerCase().trim() && 
+    const existe = usuarios.some(u =>
+      u.username?.toLowerCase() === username.toLowerCase().trim() &&
       (!usuarioEditando || u.id !== usuarioEditando.id)
     );
     if (existe) {
@@ -76,8 +76,8 @@ const UserManagementModal = ({ mostrar, setMostrar }) => {
     }
 
     // Validar si el correo ya existe (excluyendo al usuario editado)
-    const emailExiste = usuarios.some(u => 
-      u.email && u.email.toLowerCase() === email.toLowerCase().trim() && 
+    const emailExiste = usuarios.some(u =>
+      u.email && u.email.toLowerCase() === email.toLowerCase().trim() &&
       (!usuarioEditando || u.id !== usuarioEditando.id)
     );
     if (emailExiste) {
@@ -127,7 +127,7 @@ const UserManagementModal = ({ mostrar, setMostrar }) => {
 
         await editarUsuario(usuarioEditando.id, datosActualizados);
         setSuccess('¡Usuario actualizado exitosamente en Firebase!');
-        
+
         // Limpiar y resetear formulario
         cancelarEdicion();
       } else {
@@ -146,7 +146,7 @@ const UserManagementModal = ({ mostrar, setMostrar }) => {
         setPassword('');
         setRole('USER');
       }
-      
+
       setTimeout(() => setSuccess(''), 4000);
     } catch (err) {
       console.error("Error en operación de usuario Firebase:", err);
@@ -222,7 +222,7 @@ const UserManagementModal = ({ mostrar, setMostrar }) => {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
       <div className="bg-slate-900 border border-slate-800 w-full max-w-5xl rounded-[2.5rem] p-8 shadow-2xl flex flex-col max-h-[90vh]">
-        
+
         {/* Encabezado */}
         <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-3">
@@ -243,7 +243,7 @@ const UserManagementModal = ({ mostrar, setMostrar }) => {
 
         {/* Contenido dividido en 2 columnas */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-8 overflow-hidden flex-1">
-          
+
           {/* Formulario de Creación / Edición (Col 2/5) */}
           <div className="md:col-span-2 space-y-3 border-r border-slate-800/50 pr-6 flex flex-col overflow-y-auto">
             <h3 className="font-bold text-white uppercase tracking-widest text-xs flex items-center gap-2 italic">
@@ -264,8 +264,8 @@ const UserManagementModal = ({ mostrar, setMostrar }) => {
 
               <div>
                 <label className="text-[9px] font-black uppercase text-slate-500 ml-2 italic">Nombre Completo *</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Ej: Juan Pérez o Seguridad Ciudadana 1"
@@ -276,8 +276,8 @@ const UserManagementModal = ({ mostrar, setMostrar }) => {
 
               <div>
                 <label className="text-[9px] font-black uppercase text-slate-500 ml-2 italic">Nombre de Usuario * (Identificador)</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Ej: seguridad.sol"
@@ -288,8 +288,8 @@ const UserManagementModal = ({ mostrar, setMostrar }) => {
 
               <div>
                 <label className="text-[9px] font-black uppercase text-slate-500 ml-2 italic">Correo Electrónico * (Login Firebase)</label>
-                <input 
-                  type="email" 
+                <input
+                  type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Ej: seguridad@valledelsol.cl"
@@ -305,12 +305,12 @@ const UserManagementModal = ({ mostrar, setMostrar }) => {
 
               <div>
                 <label className="text-[9px] font-black uppercase text-slate-500 ml-2 italic">
-                  {usuarioEditando 
-                    ? "Contraseña (No editable desde el panel)" 
+                  {usuarioEditando
+                    ? "Contraseña (No editable desde el panel)"
                     : "Contraseña (Por defecto: ValleSol2026!)"}
                 </label>
-                <input 
-                  type="password" 
+                <input
+                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={usuarioEditando ? "No editable desde el panel" : "••••••••"}
@@ -326,7 +326,7 @@ const UserManagementModal = ({ mostrar, setMostrar }) => {
 
               <div>
                 <label className="text-[9px] font-black uppercase text-slate-500 ml-2 italic">Rol del Sistema</label>
-                <select 
+                <select
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
                   disabled={cargandoAccion}
@@ -341,15 +341,15 @@ const UserManagementModal = ({ mostrar, setMostrar }) => {
 
               {usuarioEditando ? (
                 <div className="grid grid-cols-2 gap-2 mt-4 pt-2">
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     disabled={cargandoAccion}
                     className="w-full bg-amber-600 hover:bg-amber-500 disabled:bg-amber-900 text-white font-black py-2.5 rounded-xl uppercase tracking-widest text-[9px] shadow-lg transition-all flex items-center justify-center gap-1.5"
                   >
                     {cargandoAccion ? <Loader2 size={14} className="animate-spin" /> : 'Guardar'}
                   </button>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={cancelarEdicion}
                     disabled={cargandoAccion}
                     className="w-full bg-slate-950 hover:bg-slate-800 text-slate-400 font-black py-2.5 rounded-xl uppercase tracking-widest text-[9px] border border-slate-800 transition-all flex items-center justify-center"
@@ -358,7 +358,7 @@ const UserManagementModal = ({ mostrar, setMostrar }) => {
                   </button>
                 </div>
               ) : (
-                <button 
+                <button
                   type="submit"
                   disabled={cargandoAccion}
                   className="w-full bg-red-600 hover:bg-red-500 disabled:bg-red-900 text-white font-black py-2.5 rounded-xl uppercase tracking-widest text-[9px] shadow-lg transition-all flex items-center justify-center gap-2 mt-4"
@@ -375,9 +375,12 @@ const UserManagementModal = ({ mostrar, setMostrar }) => {
 
           {/* Listado de Usuarios Existentes (Col 3/5) */}
           <div className="md:col-span-3 flex flex-col overflow-hidden">
-            <h3 className="font-bold text-white uppercase tracking-widest text-xs mb-4 flex items-center gap-2 italic">
-              <Users size={14} className="text-red-500" /> Usuarios en Firebase ({usuarios.length})
-            </h3>
+
+            <div className="flex border-b border-slate-800 mb-4 pb-2 shrink-0">
+              <span className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
+                <Users size={14} className="text-red-500" /> Todos los Usuarios Registrados ({usuarios.length})
+              </span>
+            </div>
 
             {cargandoUsuarios ? (
               <div className="flex-1 flex items-center justify-center">
@@ -390,69 +393,74 @@ const UserManagementModal = ({ mostrar, setMostrar }) => {
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
                   <CloudOff size={32} className="text-slate-700 mx-auto mb-3" />
-                  <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">No hay usuarios registrados en Firebase</p>
-                  <p className="text-[9px] text-slate-600 mt-1">Crea el primer usuario desde el formulario de la izquierda.</p>
+                  <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">No hay usuarios registrados</p>
+                  <p className="text-[9px] text-slate-600 mt-1">Crea un usuario desde la izquierda.</p>
                 </div>
               </div>
             ) : (
-              <div className="space-y-2 overflow-y-auto flex-1 pr-2 custom-scrollbar">
-                {usuarios.map((u) => (
-                  <div 
-                    key={u.id}
-                    className={`bg-slate-950/60 border p-3.5 rounded-2xl flex items-center justify-between gap-4 transition-all ${
-                      u.active 
-                        ? 'border-slate-800/80 hover:border-slate-700/50' 
-                        : 'border-red-500/10 bg-red-950/10 opacity-60'
-                    }`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs font-bold text-white tracking-tight truncate">{u.fullName}</p>
-                        {!u.active && (
-                          <span className="text-[8px] font-black text-red-500 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded uppercase tracking-widest shrink-0">
-                            Inactivo
-                          </span>
-                        )}
+              <div className="space-y-2.5 overflow-y-auto flex-1 pr-2 custom-scrollbar">
+                {usuarios.map((u) => {
+                  return (
+                    <div
+                      key={u.id}
+                      className={`bg-slate-950/60 border p-3.5 rounded-2xl flex items-center justify-between gap-4 transition-all ${
+                        u.active
+                          ? 'border-slate-800/80 hover:border-slate-700/50'
+                          : 'border-red-500/10 bg-red-950/10 opacity-60'
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-bold text-white tracking-tight truncate">{u.fullName}</p>
+                          {!u.active && (
+                            <span className="text-[8px] font-black text-red-500 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded uppercase tracking-widest shrink-0">
+                              Inactivo / Pendiente
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                          <p className="text-[10px] text-slate-500 font-mono">@{u.username}</p>
+                          {u.email && <p className="text-[9px] text-slate-600 truncate font-sans">({u.email})</p>}
+                          {getRoleBadge(u.role)}
+                        </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 mt-1">
-                        <p className="text-[10px] text-slate-500 font-mono">@{u.username}</p>
-                        {u.email && <p className="text-[9px] text-slate-600 truncate font-sans">({u.email})</p>}
-                        {getRoleBadge(u.role)}
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {/* Button Editar */}
+                        <button
+                          type="button"
+                          onClick={() => handleEditarClick(u)}
+                          title="Editar Perfil"
+                          disabled={cargandoAccion}
+                          className="p-1.5 rounded-lg border border-slate-800 hover:border-amber-500/30 text-slate-500 hover:text-amber-500 bg-slate-950 transition-all disabled:opacity-30"
+                        >
+                          <Pencil size={14} />
+                        </button>
+
+                        {/* Toggle Active */}
+                        <button
+                          type="button"
+                          onClick={() => handleToggleEstado(u)}
+                          title={u.active ? 'Desactivar Cuenta' : 'Activar Cuenta'}
+                          disabled={cargandoAccion}
+                          className={`p-1.5 rounded-lg border transition-all disabled:opacity-30 ${u.active ? 'text-emerald-500 border-emerald-500/10 bg-emerald-500/5' : 'text-slate-600 border-slate-800 bg-slate-950'}`}
+                        >
+                          {u.active ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                        </button>
+
+                        {/* Delete */}
+                        <button
+                          type="button"
+                          onClick={() => handleEliminar(u)}
+                          disabled={cargandoAccion}
+                          className="p-1.5 rounded-lg border border-slate-800 hover:border-red-500/30 text-slate-500 hover:text-red-500 bg-slate-950 transition-all disabled:opacity-30"
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {/* Button Editar */}
-                      <button 
-                        onClick={() => handleEditarClick(u)}
-                        title="Editar Perfil"
-                        disabled={cargandoAccion}
-                        className="p-1.5 rounded-lg border border-slate-800 hover:border-amber-500/30 text-slate-500 hover:text-amber-500 bg-slate-950 transition-all disabled:opacity-30"
-                      >
-                        <Pencil size={14} />
-                      </button>
-
-                      {/* Toggle Active */}
-                      <button 
-                        onClick={() => handleToggleEstado(u)}
-                        title={u.active ? 'Desactivar Cuenta' : 'Activar Cuenta'}
-                        disabled={cargandoAccion}
-                        className={`p-1.5 rounded-lg border transition-all disabled:opacity-30 ${u.active ? 'text-emerald-500 border-emerald-500/10 bg-emerald-500/5' : 'text-slate-600 border-slate-800 bg-slate-950'}`}
-                      >
-                        {u.active ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
-                      </button>
-
-                      {/* Delete */}
-                      <button 
-                        onClick={() => handleEliminar(u)}
-                        disabled={cargandoAccion}
-                        className="p-1.5 rounded-lg border border-slate-800 hover:border-red-500/30 text-slate-500 hover:text-red-500 bg-slate-950 transition-all disabled:opacity-30"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

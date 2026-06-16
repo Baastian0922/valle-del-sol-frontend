@@ -71,6 +71,8 @@ function normalizarUsuario(docSnap) {
     role: FIRESTORE_TO_ROLE[rawRole.toLowerCase()] || rawRole.toUpperCase(),
     active: data.activo !== false, // por defecto es true
     institucion: data.institucion || 'general',
+    rutCodigo: data.rutCodigo || '',
+    sectorComuna: data.sectorComuna || '',
     fechaCreacion: data.fechaCreacion || ''
   };
 }

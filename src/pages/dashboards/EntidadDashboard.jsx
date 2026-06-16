@@ -8,17 +8,21 @@ import ReporteModal from '../../components/ReporteModal';
 import HistorySidebar from '../../components/HistorySidebar';
 import EmergencyMap from '../../components/EmergencyMap';
 import EmergencyController from '../../components/EmergencyController';
+import EntityListModal from '../../components/EntityListModal';
 
-import { Flame, ShieldAlert, Users, TrendingUp, CheckCircle, AlertCircle, X } from 'lucide-react';
+import { Flame, ShieldAlert, Users, TrendingUp, CheckCircle, AlertCircle, X, Shield, Clock } from 'lucide-react';
 
 
 export default function EntidadDashboard() {
-  const { user } = useAuth();
+  const { user, usuarios = [] } = useAuth();
 
   // Estados generales
   const enviando = false;
+  const [todosLosReportes, setTodosLosReportes] = useState([]);
+  const [mostrarModalEntidades, setMostrarModalEntidades] = useState(false);
   const [toast, setToast] = useState({ mostrar: false, mensaje: '', tipo: 'success' });
   const [toastTimeoutId, setToastTimeoutId] = useState(null);
+  const [metricNow] = useState(() => Date.now());
 
   const mostrarToast = (mensaje, tipo = 'success') => {
     if (toastTimeoutId) {
@@ -43,6 +47,7 @@ export default function EntidadDashboard() {
   });
 
   const aplicarReportesEntidad = useCallback((reportes) => {
+    setTodosLosReportes(reportes);
     const reportesActivos = reportes.filter(r => r.estado !== 'RESUELTO');
     setHistorial(reportesActivos);
     setReporteSeleccionado(prev => prev ? reportesActivos.find(r => r.id === prev.id) || null : null);
@@ -181,16 +186,123 @@ export default function EntidadDashboard() {
     }
   };
 
+  // Cálculos para las métricas superiores
+  const resolvedAlerts = todosLosReportes.filter(r => r.estado === 'RESUELTO').length;
+  const totalAlerts = todosLosReportes.length;
+  const serviceLevel = totalAlerts > 0 ? Math.round((resolvedAlerts / totalAlerts) * 100) : 100;
+
+  // Escala de colores para nivel de servicio
+  let serviceLevelColor = "text-emerald-500";
+  let serviceLevelBg = "bg-emerald-500/10";
+  if (serviceLevel <= 20) {
+    serviceLevelColor = "text-red-500";
+    serviceLevelBg = "bg-red-500/10";
+  } else if (serviceLevel <= 40) {
+    serviceLevelColor = "text-orange-500";
+    serviceLevelBg = "bg-orange-500/10";
+  } else if (serviceLevel <= 60) {
+    serviceLevelColor = "text-yellow-500";
+    serviceLevelBg = "bg-yellow-500/10";
+  } else if (serviceLevel <= 80) {
+    serviceLevelColor = "text-lime-400";
+    serviceLevelBg = "bg-lime-400/10";
+  }
+
+  // Caso más antiguo sin resolver
+  const activeAlerts = todosLosReportes.filter(r => r.estado !== 'RESUELTO');
+  let oldestAlert = null;
+  let tiempoTranscurrido = "";
+  if (activeAlerts.length > 0) {
+    oldestAlert = activeAlerts.reduce((oldest, current) => {
+      const tOldest = new Date(oldest.fechaCreacion || oldest.fecha || 0).getTime();
+      const tCurrent = new Date(current.fechaCreacion || current.fecha || 0).getTime();
+      if (isNaN(tOldest)) return current;
+      if (isNaN(tCurrent)) return oldest;
+      return tCurrent < tOldest ? current : oldest;
+    });
+
+    if (oldestAlert) {
+      const diffMs = metricNow - new Date(oldestAlert.fechaCreacion || oldestAlert.fecha).getTime();
+      if (!isNaN(diffMs)) {
+        const diffMins = Math.floor(diffMs / 60000);
+        if (diffMins < 60) {
+          tiempoTranscurrido = `Hace ${diffMins} min`;
+        } else if (diffMins < 1440) {
+          tiempoTranscurrido = `Hace ${Math.floor(diffMins / 60)}h`;
+        } else {
+          tiempoTranscurrido = `Hace ${Math.floor(diffMins / 1440)}d`;
+        }
+      }
+    }
+  }
+
+  const handleFocusOldest = (alert) => {
+    if (alert) {
+      abrirDetalleReporte(alert);
+      mostrarToast(`Enfocado caso más antiguo #${alert.id}`, "info");
+    }
+  };
+
+  const entidadesCount = usuarios.filter(u => u.role === 'EMERGENCY_ENTITY' || u.role === 'STAFF').length;
+
   const statsData = [
-    { label: "Alertas Activas", value: historial.length, icon: <Flame size={20}/>, color: "text-red-500", bg: "bg-red-500/10" },
-    { label: "Personal en Terreno", value: "18", icon: <Users size={20}/>, color: "text-blue-500", bg: "bg-blue-500/10" },
-    { label: "Nivel de Riesgo", value: "Crítico", icon: <ShieldAlert size={20}/>, color: "text-orange-500", bg: "bg-orange-500/10" },
-    { label: "Eficiencia Op.", value: "98%", icon: <TrendingUp size={20}/>, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+    {
+      label: "Alertas Activas",
+      value: activeAlerts.length,
+      icon: <Flame size={20} className="animate-pulse" />,
+      color: "text-red-500",
+      bg: "bg-red-500/10",
+      secondaryText: "Focos de incendio activos"
+    },
+    {
+      label: "Nivel de Servicio",
+      value: `${serviceLevel}%`,
+      icon: <TrendingUp size={20} />,
+      color: serviceLevelColor,
+      bg: serviceLevelBg,
+      secondaryText: `${resolvedAlerts} cerrados de ${totalAlerts} totales`,
+      renderFooter: () => (
+        <div className="mt-3 space-y-1">
+          <div className="h-2 w-full bg-slate-950 rounded-full border border-slate-800/80 overflow-hidden relative">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${serviceLevel === 0 ? 5 : serviceLevel}%`,
+                background: serviceLevel === 0 ? '#ef4444' : 'linear-gradient(to right, #ef4444, #f97316, #eab308, #84cc16, #22c55e)'
+              }}
+            ></div>
+          </div>
+          <div className="flex justify-between text-[8px] font-black text-slate-500 uppercase tracking-widest pt-0.5">
+            <span className="text-red-500/80">Crítico</span>
+            <span className="text-yellow-500/80">Medio</span>
+            <span className="text-emerald-500/80">Excelente</span>
+          </div>
+        </div>
+      )
+    },
+    {
+      label: "Casos Más Tardíos",
+      value: oldestAlert ? `Caso #${oldestAlert.id}` : 'Al Día',
+      icon: <Clock size={20} className={oldestAlert ? "animate-bounce" : ""} />,
+      color: oldestAlert ? "text-amber-500" : "text-emerald-500",
+      bg: oldestAlert ? "bg-amber-500/10" : "bg-emerald-500/10",
+      secondaryText: oldestAlert ? `${tiempoTranscurrido} - Sin atender` : 'Sin alertas pendientes',
+      onClick: oldestAlert ? () => handleFocusOldest(oldestAlert) : undefined
+    },
+    {
+      label: "Entidades Registradas",
+      value: `${entidadesCount} Entidad${entidadesCount === 1 ? '' : 'es'}`,
+      icon: <Shield size={20} />,
+      color: "text-blue-400",
+      bg: "bg-blue-400/10",
+      secondaryText: "Ver bomberos, carabineros, etc.",
+      onClick: () => setMostrarModalEntidades(true)
+    },
   ];
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-200 font-sans">
-      <ReporteModal 
+      <ReporteModal
         mostrar={mostrarModal} setMostrar={setMostrarModal}
         modoLectura={modoLectura} datos={datosReporte}
         handleChange={() => {}} handleSubmit={(e) => { e.preventDefault(); setMostrarModal(false); }}
@@ -229,7 +341,7 @@ export default function EntidadDashboard() {
         </section>
 
         <section className="max-w-[1500px] mx-auto grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <EmergencyMap 
+          <EmergencyMap
             user={user}
             historial={historial}
             selectedCoords={selectedCoords}
@@ -263,6 +375,12 @@ export default function EntidadDashboard() {
         </section>
       </main>
 
+      <EntityListModal
+        mostrar={mostrarModalEntidades}
+        setMostrar={setMostrarModalEntidades}
+        usuarios={usuarios}
+      />
+
       {toast.mostrar && (
         <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-3 bg-slate-900/95 backdrop-blur-md border border-slate-700/50 text-slate-100 px-6 py-4 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] max-w-md transition-all duration-300 animate-slide-up">
           {toast.tipo === 'success' && <CheckCircle className="text-emerald-400 w-5 h-5 flex-shrink-0 animate-pulse" />}
@@ -272,8 +390,8 @@ export default function EntidadDashboard() {
             <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Notificación</p>
             <p className="text-xs font-bold text-white mt-0.5">{toast.mensaje}</p>
           </div>
-          <button 
-            onClick={() => setToast(prev => ({ ...prev, mostrar: false }))} 
+          <button
+            onClick={() => setToast(prev => ({ ...prev, mostrar: false }))}
             className="text-slate-400 hover:text-white transition-colors"
           >
             <X size={16} />

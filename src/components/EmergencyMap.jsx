@@ -105,8 +105,8 @@ export default function EmergencyMap({
     window.open(gMapsUrl, '_blank');
   };
 
-  const safeSelectedCoords = selectedCoords && !isNaN(Number(selectedCoords[0])) && !isNaN(Number(selectedCoords[1])) 
-    ? [Number(selectedCoords[0]), Number(selectedCoords[1])] 
+  const safeSelectedCoords = selectedCoords && !isNaN(Number(selectedCoords[0])) && !isNaN(Number(selectedCoords[1]))
+    ? [Number(selectedCoords[0]), Number(selectedCoords[1])]
     : null;
 
   return (
@@ -122,7 +122,7 @@ export default function EmergencyMap({
         </div>
 
         <div className="flex items-center gap-3">
-          <button 
+          <button
             type="button"
             onClick={() => setMapType(mapType === 'roadmap' ? 'satellite' : 'roadmap')}
             className="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-white border border-slate-700 rounded-2xl font-black uppercase text-[9px] tracking-wider transition-all"
@@ -132,7 +132,7 @@ export default function EmergencyMap({
 
           {user?.role !== 'USER' ? (
             safeSelectedCoords && (user?.role === 'EMERGENCY_ENTITY' || user?.role === 'ADMIN') && (
-              <button 
+              <button
                 onClick={() => abrirRutaGoogleMaps(safeSelectedCoords[0], safeSelectedCoords[1])}
                 className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-black uppercase text-[10px] tracking-widest shadow-xl transition-all flex items-center gap-2 animate-pulse"
               >
@@ -143,7 +143,7 @@ export default function EmergencyMap({
 
           {/* 2. El boton envia las coordenadas actuales del pin */}
           {canSelectLocation && (
-            <button 
+            <button
               onClick={() => {
                 if (!locationSelectionActive) {
                   onStartLocationSelection?.();
@@ -163,11 +163,11 @@ export default function EmergencyMap({
 
       <div className="flex-1 z-10 bg-slate-950">
         <MapContainer center={[-33.4372, -70.6506]} zoom={13} style={{ height: '100%', width: '100%' }}>
-          <TileLayer 
-            url={mapType === 'roadmap' 
-              ? "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" 
+          <TileLayer
+            url={mapType === 'roadmap'
+              ? "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
               : "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-            } 
+            }
             attribution="© Google Maps"
           />
 
@@ -183,7 +183,7 @@ export default function EmergencyMap({
             lat={datosReporte?.latitud}
             lng={datosReporte?.longitud}
           />
-          
+
           {safeSelectedCoords && <MapController targetCoords={safeSelectedCoords} />}
 
           {historial.filter(rep => rep.estado !== 'RESUELTO').map((rep) => {
@@ -191,8 +191,8 @@ export default function EmergencyMap({
             const lng = Number(rep.longitud);
             if (isNaN(lat) || isNaN(lng)) return null;
             return (
-              <Marker 
-                key={rep.id} 
+              <Marker
+                key={rep.id}
                 position={[lat, lng]}
                 icon={FireIcon}
                 eventHandlers={{
@@ -202,7 +202,7 @@ export default function EmergencyMap({
                 <Popup className="custom-popup">
                   <div className="p-1 font-sans text-slate-800">
                     <p className="font-black text-sm uppercase">{rep.titulo}</p>
-                    <p className="text-xs text-red-600 font-bold uppercase mt-1">{rep.estado}</p>
+                    <p className="text-xs text-red-650 font-black uppercase mt-1 tracking-wider">{rep.estado}</p>
                   </div>
                 </Popup>
               </Marker>
@@ -214,10 +214,10 @@ export default function EmergencyMap({
               <Marker position={responderCoords} icon={ResponderIcon}>
                 <Popup>Tu ubicación simulada en terreno</Popup>
               </Marker>
-              <Polyline 
-                positions={[responderCoords, safeSelectedCoords]} 
-                color="#3b82f6" 
-                dashArray="8, 12" 
+              <Polyline
+                positions={[responderCoords, safeSelectedCoords]}
+                color="#3b82f6"
+                dashArray="8, 12"
                 weight={4}
               />
             </>
@@ -236,7 +236,7 @@ export default function EmergencyMap({
               <p className="text-[10px] text-slate-400 uppercase font-semibold mt-0.5">Diferencia de posición en mapa activo</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={() => abrirRutaGoogleMaps(selectedCoords[0], selectedCoords[1])}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold uppercase text-[9px] tracking-widest rounded-lg transition-all"
           >
