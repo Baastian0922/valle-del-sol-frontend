@@ -8,16 +8,16 @@ const StatCard = ({ label, value, icon, color, bg, secondaryText, onClick, rende
       onClick={onClick}
       className={`bg-slate-900 border border-slate-800 shadow-xl group transition-all duration-300 ${
         compact
-          ? 'p-4 rounded-2xl flex items-center gap-4'
-          : 'p-6 rounded-[2rem] flex flex-col justify-between'
+          ? 'p-2.5 rounded-2xl flex items-center gap-3'
+          : 'p-3.5 rounded-3xl flex flex-col justify-between'
       } ${
         isClickable
           ? 'cursor-pointer hover:border-slate-700/80 hover:bg-slate-900/80 hover:shadow-2xl hover:shadow-slate-950 active:scale-98'
           : ''
       }`}
     >
-      <div className="flex justify-between items-start">
-        <div className={`${bg} ${color} ${compact ? 'p-2.5 rounded-xl' : 'p-3 rounded-2xl mb-4'} w-fit group-hover:scale-110 transition-transform duration-300`}>
+      <div className="flex justify-between items-start shrink-0">
+        <div className={`${bg} ${color} ${compact ? 'p-1.5 rounded-lg' : 'p-2.5 rounded-xl mb-2'} w-fit group-hover:scale-110 transition-transform duration-300`}>
           {icon}
         </div>
         {isClickable && (
@@ -27,10 +27,10 @@ const StatCard = ({ label, value, icon, color, bg, secondaryText, onClick, rende
         )}
       </div>
       <div>
-        <p className="text-slate-500 font-bold text-[10px] uppercase mb-1 tracking-widest">{label}</p>
-        <h3 className={`${compact ? 'text-xl' : 'text-3xl'} font-black text-white tracking-tighter truncate max-w-full`}>{value}</h3>
+        <p className="text-slate-500 font-bold text-[9px] uppercase mb-0.5 tracking-widest">{label}</p>
+        <h3 className={`${compact ? 'text-lg' : 'text-xl'} font-black text-white tracking-tighter truncate max-w-full`}>{value}</h3>
         {secondaryText && (
-          <p className="text-[9px] text-slate-400 mt-1 font-medium italic truncate">{secondaryText}</p>
+          <p className="text-[9px] text-slate-400 mt-0.5 font-medium italic truncate">{secondaryText}</p>
         )}
         {typeof renderFooter === 'function' && renderFooter()}
       </div>

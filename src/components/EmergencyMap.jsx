@@ -110,7 +110,7 @@ export default function EmergencyMap({
     : null;
 
   return (
-    <div className={`lg:col-span-2 bg-slate-900 border border-slate-800 overflow-hidden min-h-[500px] flex flex-col shadow-2xl relative ${compact ? 'rounded-3xl' : 'rounded-[2.5rem]'}`}>
+    <div className={`lg:col-span-2 bg-slate-900 border border-slate-800 overflow-hidden min-h-[420px] flex flex-col shadow-2xl relative ${compact ? 'rounded-3xl' : 'rounded-[2.5rem]'}`}>
       <div className={`${compact ? 'px-5 py-3' : 'p-6'} border-b border-slate-800 flex justify-between items-center bg-slate-900/50 z-10`}>
         <div>
           <h3 className="font-bold text-white uppercase tracking-widest text-sm italic">Geolocalización</h3>
@@ -129,17 +129,6 @@ export default function EmergencyMap({
           >
             {mapType === 'roadmap' ? 'Ver Satélite' : 'Ver Mapa'}
           </button>
-
-          {user?.role !== 'USER' ? (
-            safeSelectedCoords && (user?.role === 'EMERGENCY_ENTITY' || user?.role === 'ADMIN') && (
-              <button
-                onClick={() => abrirRutaGoogleMaps(safeSelectedCoords[0], safeSelectedCoords[1])}
-                className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-black uppercase text-[10px] tracking-widest shadow-xl transition-all flex items-center gap-2 animate-pulse"
-              >
-                <Navigation size={13} /> GPS Turn-by-Turn
-              </button>
-            )
-          ) : null}
 
           {/* 2. El boton envia las coordenadas actuales del pin */}
           {canSelectLocation && (
@@ -210,17 +199,9 @@ export default function EmergencyMap({
           })}
 
           {user?.role === 'EMERGENCY_ENTITY' && safeSelectedCoords && (
-            <>
-              <Marker position={responderCoords} icon={ResponderIcon}>
-                <Popup>Tu ubicación simulada en terreno</Popup>
-              </Marker>
-              <Polyline
-                positions={[responderCoords, safeSelectedCoords]}
-                color="#3b82f6"
-                dashArray="8, 12"
-                weight={4}
-              />
-            </>
+            <Marker position={responderCoords} icon={ResponderIcon}>
+              <Popup>Tu ubicación simulada en terreno</Popup>
+            </Marker>
           )}
         </MapContainer>
       </div>

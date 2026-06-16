@@ -85,7 +85,10 @@ const Sidebar = ({ onRefresh, onShowUsers, onShowEntityValidation, vistaActiva =
         )}
 
         {user?.role === 'ADMIN' && onShowEntityValidation && (
-          <button onClick={onShowEntityValidation} className="w-full flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl font-bold transition-all text-xs uppercase tracking-wider">
+          <button 
+            onClick={onShowEntityValidation} 
+            className={`w-full flex items-center justify-center md:justify-start gap-3 px-3 md:px-4 py-3 rounded-xl font-bold transition-all text-xs uppercase tracking-wider ${vistaActiva === 'validar-entidades' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
+          >
             <ShieldAlert size={18} className="shrink-0" />
             <span className="hidden md:inline">Validar Entidades</span>
           </button>

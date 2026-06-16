@@ -55,7 +55,7 @@ export default function SavedReportsHistory({ reportes, onSelectReporte, onDelet
       rep.descripcion?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesEstado = filterEstado === 'TODOS' || rep.estado === filterEstado;
-    const timestamp = getReportTimestamp(rep.fecha);
+    const timestamp = getReportTimestamp(rep.fecha || rep.fechaCreacion);
     const inicio = fechaDesde ? new Date(`${fechaDesde}T00:00:00`).getTime() : null;
     const fin = fechaHasta ? new Date(`${fechaHasta}T23:59:59.999`).getTime() : null;
     const matchesFecha =
@@ -92,7 +92,7 @@ export default function SavedReportsHistory({ reportes, onSelectReporte, onDelet
       r.estado,
       r.latitud,
       r.longitud,
-      `"${r.fecha || ''}"`
+      `"${r.fecha || r.fechaCreacion || ''}"`
     ]);
 
     const csvContent = "data:text/csv;charset=utf-8,\uFEFF"
@@ -283,7 +283,7 @@ export default function SavedReportsHistory({ reportes, onSelectReporte, onDelet
                 <td className="p-4">
                   <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
                     <Calendar size={12} className="text-blue-400" />
-                    <span>{rep.fecha || 'Sin fecha'}</span>
+                    <span>{rep.fecha || rep.fechaCreacion ? new Date(rep.fecha || rep.fechaCreacion).toLocaleString() : 'Sin fecha'}</span>
                   </div>
                 </td>
                 <td className="p-4">
