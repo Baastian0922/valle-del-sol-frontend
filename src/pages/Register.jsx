@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { Flame, Lock, ArrowRight, AlertCircle, Mail, User, ShieldCheck } from 'lucide-react';
+import { Flame, Lock, ArrowRight, AlertCircle, Mail, User, ShieldCheck, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 
 // ── Firebase ──────────────────────────────────────────────────────────────────
 import { auth, db } from '../services/firebase-config';
-import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signOut, sendEmailVerification } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 
 // ── Constantes de Validación ──────────────────────────────────────────────────
@@ -19,8 +19,12 @@ function Register() {
 
   // Estados del formulario
   const [nombre, setNombre] = useState('');
+  const [rutVecino, setRutVecino] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [mostrarPassword, setMostrarPassword] = useState(false);
+  const [mostrarConfirmPassword, setMostrarConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
 
@@ -30,15 +34,37 @@ function Register() {
   const [institucion, setInstitucion] = useState('');
   const [rutCodigo, setRutCodigo] = useState('');
   const [sectorComuna, setSectorComuna] = useState('');
-  const [codigoValidacion, setCodigoValidacion] = useState('');
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
+    // Validaciones Comunes
+    if (!email.trim() || !EMAIL_REGEX.test(email.trim())) {
+      setError(esEntidad ? 'Por favor, ingresa un correo de institución válido.' : 'Por favor, ingresa un correo electrónico válido.');
+      return;
+    }
+    if (!password) {
+      setError('Por favor, define una contraseña.');
+      return;
+    }
+    if (!PASSWORD_REGEX.test(password)) {
+      setError('La contraseña debe tener mínimo 8 caracteres, una mayúscula, una minúscula, un número y un símbolo.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Las contraseñas no coinciden.');
+      return;
+    }
+
+    // Validaciones Específicas
     if (!esEntidad) {
       if (!nombre.trim()) {
         setError('Por favor, ingresa tu nombre completo.');
+        return;
+      }
+      if (!rutVecino.trim()) {
+        setError('Por favor, ingresa tu RUT.');
         return;
       }
     } else {
@@ -54,23 +80,6 @@ function Register() {
         setError('Por favor, ingresa el sector o comuna.');
         return;
       }
-      if (codigoValidacion.trim() !== 'VALLESOL_EMERGENCIA_2026') {
-        setError('El código de validación comunal institucional es incorrecto.');
-        return;
-      }
-    }
-
-    if (!email.trim() || !EMAIL_REGEX.test(email.trim())) {
-      setError(esEntidad ? 'Por favor, ingresa un correo de institución válido.' : 'Por favor, ingresa un correo electrónico válido.');
-      return;
-    }
-    if (!password) {
-      setError('Por favor, define una contraseña.');
-      return;
-    }
-    if (!PASSWORD_REGEX.test(password)) {
-      setError('La contraseña debe tener mínimo 8 caracteres, una mayúscula, una minúscula, un número y un símbolo.');
-      return;
     }
 
     setCargando(true);
@@ -96,7 +105,7 @@ function Register() {
         rol: dbRol,
         role: dbRole,
         institucion: esEntidad ? institucion.trim() : 'general',
-        rutCodigo: esEntidad ? rutCodigo.trim() : '',
+        rutCodigo: esEntidad ? rutCodigo.trim() : rutVecino.trim(),
         sectorComuna: esEntidad ? sectorComuna.trim() : '',
         activo: !esEntidad, // Para firebase-admin-service
         active: !esEntidad, // Para compatibilidad general
@@ -104,17 +113,25 @@ function Register() {
       });
 
       if (esEntidad) {
-        // Desconectar sesión automática del registro para esperar aprobación
+        // Enviar correo de verificación y desconectar sesión automática del registro para esperar aprobación
+        await sendEmailVerification(credencial.user);
         await signOut(auth);
-        navigate('/login', {
+        navigate('/login?type=entidad', {
           state: {
-            mensajeExito: '¡Solicitud de registro institucional enviada con éxito! Tu cuenta de respondedor oficial se encuentra en revisión. El Administrador de la Municipalidad debe validar y aprobar tu solicitud.'
+            mensajeExito: '¡Solicitud enviada! Te enviamos un correo para verificar tu cuenta. Además, tu cuenta institucional debe ser aprobada por el Administrador.'
           },
           replace: true
         });
       } else {
-        // Redirigir directamente al dashboard operativo del vecino
-        navigate('/dashboard', { replace: true });
+        // Enviar correo de verificación y desconectar al vecino
+        await sendEmailVerification(credencial.user);
+        await signOut(auth);
+        navigate('/login?type=comunidad', {
+          state: {
+            mensajeExito: '¡Cuenta creada con éxito! Te hemos enviado un enlace de verificación a tu correo. Por favor, verifica tu correo antes de iniciar sesión.'
+          },
+          replace: true
+        });
       }
 
     } catch (err) {
@@ -193,6 +210,11 @@ function Register() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start animate-in fade-in duration-300">
                 {/* Columna Izquierda: Datos Institucionales */}
                 <div className="space-y-4 p-5 bg-red-950/5 border border-red-500/10 rounded-[2rem]">
+                  <div className="mb-2">
+                    <button type="button" onClick={() => navigate(-1)} className="text-slate-400 hover:text-white flex items-center gap-2 text-[10px] font-bold transition-colors uppercase tracking-widest">
+                      <ArrowLeft size={14} /> Volver atrás
+                    </button>
+                  </div>
                   <p className="text-[10px] text-red-400 font-black uppercase tracking-wider italic flex items-center gap-1.5 mb-2">
                     <AlertCircle size={14} className="shrink-0" /> Datos de la Institución
                   </p>
@@ -255,25 +277,6 @@ function Register() {
                       className="w-full bg-slate-950 border border-slate-800 text-white px-4 py-2.5 rounded-xl focus:outline-none focus:border-red-600/60 transition-all font-semibold text-xs"
                     />
                   </div>
-
-                  {/* Código de Validación */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between items-center ml-1">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                        Credencial Comunal
-                      </label>
-                      <span className="text-[8px] text-amber-500 font-black uppercase tracking-wider">
-                        Demo: VALLESOL_EMERGENCIA_2026
-                      </span>
-                    </div>
-                    <input
-                      type="password"
-                      value={codigoValidacion}
-                      onChange={(e) => setCodigoValidacion(e.target.value)}
-                      placeholder="Ingrese código de validación"
-                      className="w-full bg-slate-950 border border-slate-800 text-white px-4 py-2.5 rounded-xl focus:outline-none focus:border-red-600/60 transition-all font-semibold text-xs"
-                    />
-                  </div>
                 </div>
 
                 {/* Columna Derecha: Credenciales de Cuenta */}
@@ -312,17 +315,53 @@ function Register() {
                         <Lock size={18} />
                       </div>
                       <input
-                        type="password"
+                        type={mostrarPassword ? "text" : "password"}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
                         disabled={cargando}
-                        className="w-full bg-slate-950 border border-slate-800 text-white pl-11 pr-4 py-3 rounded-xl focus:outline-none focus:border-red-650/60 focus:ring-1 focus:ring-red-600/40 transition-all disabled:opacity-50 text-sm"
+                        maxLength={15}
+                        className="w-full bg-slate-950 border border-slate-800 text-white pl-11 pr-12 py-3 rounded-xl focus:outline-none focus:border-red-650/60 focus:ring-1 focus:ring-red-600/40 transition-all disabled:opacity-50 text-sm"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setMostrarPassword(!mostrarPassword)}
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-white transition-colors"
+                      >
+                        {mostrarPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
                     </div>
                     <p className="text-[10px] text-slate-600 ml-1 mt-1 leading-relaxed">
                       Mín. 8 caracteres · Mayúscula · Minúscula · Número · Símbolo
                     </p>
+                  </div>
+
+                  {/* Campo Confirmar Contraseña */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">
+                      Confirmar Contraseña
+                    </label>
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500 group-focus-within:text-red-500 transition-colors pointer-events-none">
+                        <Lock size={18} />
+                      </div>
+                      <input
+                        type={mostrarConfirmPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="••••••••"
+                        disabled={cargando}
+                        maxLength={15}
+                        className="w-full bg-slate-950 border border-slate-800 text-white pl-11 pr-12 py-3 rounded-xl focus:outline-none focus:border-red-650/60 focus:ring-1 focus:ring-red-600/40 transition-all disabled:opacity-50 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setMostrarConfirmPassword(!mostrarConfirmPassword)}
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-white transition-colors"
+                      >
+                        {mostrarConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                   </div>
 
                   {/* Botón de Enviar */}
@@ -343,6 +382,12 @@ function Register() {
             ) : (
               /* Formulario Simple Ciudadano (Una columna) */
               <>
+                <div className="mb-2">
+                  <button type="button" onClick={() => navigate(-1)} className="text-slate-400 hover:text-white flex items-center gap-2 text-[10px] font-bold transition-colors uppercase tracking-widest">
+                    <ArrowLeft size={14} /> Volver atrás
+                  </button>
+                </div>
+
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">
                     Nombre Completo
@@ -357,6 +402,27 @@ function Register() {
                       onChange={(e) => setNombre(e.target.value)}
                       placeholder="Ej: Juan Vecino"
                       disabled={cargando}
+                      maxLength={35}
+                      className="w-full bg-slate-950 border border-slate-800 text-white pl-11 pr-4 py-3 rounded-xl focus:outline-none focus:border-red-600/60 focus:ring-1 focus:ring-red-600/40 transition-all font-semibold text-sm placeholder:text-slate-700"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">
+                    RUT
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500 group-focus-within:text-red-500 transition-colors pointer-events-none">
+                      <User size={18} />
+                    </div>
+                    <input
+                      type="text"
+                      value={rutVecino}
+                      onChange={(e) => setRutVecino(e.target.value.replace(/[^0-9kK.-]/g, ''))}
+                      placeholder="Ej: 12.345.678-9"
+                      disabled={cargando}
+                      maxLength={13}
                       className="w-full bg-slate-950 border border-slate-800 text-white pl-11 pr-4 py-3 rounded-xl focus:outline-none focus:border-red-600/60 focus:ring-1 focus:ring-red-600/40 transition-all font-semibold text-sm placeholder:text-slate-700"
                     />
                   </div>
@@ -390,17 +456,52 @@ function Register() {
                       <Lock size={18} />
                     </div>
                     <input
-                      type="password"
+                      type={mostrarPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
                       disabled={cargando}
-                      className="w-full bg-slate-950 border border-slate-800 text-white pl-11 pr-4 py-3 rounded-xl focus:outline-none focus:border-red-600/60 focus:ring-1 focus:ring-red-600/40 transition-all disabled:opacity-50 text-sm"
+                      maxLength={15}
+                      className="w-full bg-slate-950 border border-slate-800 text-white pl-11 pr-12 py-3 rounded-xl focus:outline-none focus:border-red-600/60 focus:ring-1 focus:ring-red-600/40 transition-all disabled:opacity-50 text-sm"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setMostrarPassword(!mostrarPassword)}
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-white transition-colors"
+                    >
+                      {mostrarPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
                   <p className="text-[10px] text-slate-600 ml-1 mt-1 leading-relaxed">
-                    Mín. 8 caracteres · Mayúscula · Minúscula · Número · Símbolo
+                    Mín. 8 y Máx. 15 caracteres · Mayúscula · Minúscula · Número · Símbolo
                   </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">
+                    Confirmar Contraseña
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500 group-focus-within:text-red-500 transition-colors pointer-events-none">
+                      <Lock size={18} />
+                    </div>
+                    <input
+                      type={mostrarConfirmPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="••••••••"
+                      disabled={cargando}
+                      maxLength={15}
+                      className="w-full bg-slate-950 border border-slate-800 text-white pl-11 pr-12 py-3 rounded-xl focus:outline-none focus:border-red-600/60 focus:ring-1 focus:ring-red-600/40 transition-all disabled:opacity-50 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setMostrarConfirmPassword(!mostrarConfirmPassword)}
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-white transition-colors"
+                    >
+                      {mostrarConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
 
                 <button
