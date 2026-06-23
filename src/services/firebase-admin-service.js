@@ -148,7 +148,10 @@ export async function editarUsuarioFirebase(uid, datosActualizados) {
   if (datosActualizados.fullName !== undefined) updateData.nombre = datosActualizados.fullName;
   if (datosActualizados.username !== undefined) updateData.username = datosActualizados.username;
   if (datosActualizados.email !== undefined) updateData.email = datosActualizados.email.toLowerCase();
-  if (datosActualizados.role !== undefined) updateData.rol = ROLE_TO_FIRESTORE[datosActualizados.role] || 'vecino';
+  if (datosActualizados.role !== undefined) {
+    updateData.rol = ROLE_TO_FIRESTORE[datosActualizados.role] || 'vecino';
+    updateData.role = datosActualizados.role;
+  }
   if (datosActualizados.institucion !== undefined) updateData.institucion = datosActualizados.institucion;
 
   await updateDoc(doc(db, 'usuarios', uid), updateData);

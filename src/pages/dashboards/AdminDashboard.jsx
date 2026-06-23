@@ -339,12 +339,13 @@ export default function AdminDashboard() {
     serviceLevelBg = "bg-lime-400/10";
   }
 
-  // Caso más antiguo sin resolver
-  const activeAlerts = historial.filter(r => r.estado !== 'RESUELTO');
+  // Caso más antiguo sin resolver ni controlado para la tarjeta de Tardíos (solo PENDIENTE o NUEVO)
+  const activeAlerts = historial.filter(r => !r.estado?.startsWith('RESUELTO'));
+  const tardiosAlerts = historial.filter(r => r.estado === 'PENDIENTE' || r.estado === 'NUEVO');
   let oldestAlert = null;
   let tiempoTranscurrido = "";
-  if (activeAlerts.length > 0) {
-    oldestAlert = activeAlerts.reduce((oldest, current) => {
+  if (tardiosAlerts.length > 0) {
+    oldestAlert = tardiosAlerts.reduce((oldest, current) => {
       const tOldest = new Date(oldest.fechaCreacion || oldest.fecha || 0).getTime();
       const tCurrent = new Date(current.fechaCreacion || current.fecha || 0).getTime();
       if (isNaN(tOldest)) return current;
@@ -414,11 +415,12 @@ export default function AdminDashboard() {
     {
       label: "Casos Más Tardíos",
       value: oldestAlert ? `Caso #${oldestAlert.id}` : 'Al Día',
-      icon: <Clock size={20} className={oldestAlert ? "animate-bounce" : ""} />,
-      color: oldestAlert ? "text-amber-500" : "text-emerald-500",
-      bg: oldestAlert ? "bg-amber-500/10" : "bg-emerald-500/10",
+      icon: <Clock size={20} className={oldestAlert && (oldestAlert.estado === 'PENDIENTE' || oldestAlert.estado === 'NUEVO') ? "animate-bounce" : ""} />,
+      color: oldestAlert && (oldestAlert.estado === 'PENDIENTE' || oldestAlert.estado === 'NUEVO') ? "text-red-500" : (oldestAlert ? "text-amber-500" : "text-emerald-500"),
+      bg: oldestAlert && (oldestAlert.estado === 'PENDIENTE' || oldestAlert.estado === 'NUEVO') ? "bg-red-500/10" : (oldestAlert ? "bg-amber-500/10" : "bg-emerald-500/10"),
       secondaryText: oldestAlert ? `${tiempoTranscurrido} - Sin atender` : 'Sin alertas pendientes',
-      onClick: oldestAlert ? () => handleFocusOldest(oldestAlert) : undefined
+      onClick: oldestAlert ? () => handleFocusOldest(oldestAlert) : undefined,
+      pulseBorder: !!(oldestAlert && (oldestAlert.estado === 'PENDIENTE' || oldestAlert.estado === 'NUEVO'))
     },
     {
       label: "Entidades Registradas",
@@ -556,21 +558,21 @@ export default function AdminDashboard() {
                         onClick={() => setTabHistorial('activas')}
                         className={`flex-grow py-2 rounded-xl text-[10px] font-black uppercase tracking-wider italic transition-all ${tabHistorial === 'activas' ? 'bg-red-600 text-white shadow-lg shadow-red-600/10' : 'text-slate-400 hover:text-white bg-slate-950/40'}`}
                       >
-                        Alertas Activas ({historial.filter(r => r.estado !== 'CONTROLADO' && r.estado !== 'RESUELTO').length})
+                        Alertas Activas ({historial.filter(r => !r.estado?.startsWith('CONTROLADO') && !r.estado?.startsWith('RESUELTO')).length})
                       </button>
                       <button
                         onClick={() => setTabHistorial('controlados')}
                         className={`flex-grow py-2 rounded-xl text-[10px] font-black uppercase tracking-wider italic transition-all ${tabHistorial === 'controlados' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/10' : 'text-slate-400 hover:text-white bg-slate-950/40'}`}
                       >
-                        Controlados / Cerrados ({historial.filter(r => r.estado === 'CONTROLADO' || r.estado === 'RESUELTO').length})
+                        Controlados / Cerrados ({historial.filter(r => r.estado?.startsWith('CONTROLADO') || r.estado?.startsWith('RESUELTO')).length})
                       </button>
                     </div>
 
                     <HistorySidebar
                       historial={
                         tabHistorial === 'activas'
-                          ? historial.filter(r => r.estado !== 'CONTROLADO' && r.estado !== 'RESUELTO')
-                          : historial.filter(r => r.estado === 'CONTROLADO' || r.estado === 'RESUELTO')
+                          ? historial.filter(r => !r.estado?.startsWith('CONTROLADO') && !r.estado?.startsWith('RESUELTO'))
+                          : historial.filter(r => r.estado?.startsWith('CONTROLADO') || r.estado?.startsWith('RESUELTO'))
                       }
                       onSelect={abrirDetalleReporte}
                     />

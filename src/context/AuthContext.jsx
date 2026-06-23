@@ -48,20 +48,32 @@ export function AuthProvider({ children }) {
             }
 
             const rawRole = datosAdicionales?.rol || datosAdicionales?.role || '';
+            const rolNormalizado = rawRole.toLowerCase().trim();
+
+            if (rolNormalizado !== 'staff' && rolNormalizado !== 'admin' && !currentUser.emailVerified) {
+              // El usuario está en Firebase pero no ha verificado su correo.
+              // No seteamos el user en el contexto para bloquear el acceso al dashboard.
+              setUser(null);
+              setLoading(false);
+              return;
+            }
 
             const diccionarioRoles = {
               admin: 'ADMIN',
               vecino: 'USER',
+              user: 'USER',
               comunidad: 'USER',
               entidad: 'EMERGENCY_ENTITY',
               emergencia: 'EMERGENCY_ENTITY',
               bombero: 'EMERGENCY_ENTITY',
               carabinero: 'EMERGENCY_ENTITY',
               ambulancia: 'EMERGENCY_ENTITY',
-              municipalidad: 'EMERGENCY_ENTITY'
+              municipalidad: 'EMERGENCY_ENTITY',
+              emergency_entity: 'EMERGENCY_ENTITY',
+              staff: 'STAFF'
             };
 
-            roleForDashboard = diccionarioRoles[rawRole.toLowerCase()] || rawRole;
+            roleForDashboard = diccionarioRoles[rolNormalizado] || rawRole;
           }
 
           setUser({
