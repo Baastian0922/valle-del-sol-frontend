@@ -1,11 +1,6 @@
 import React from 'react';
 import { ArrowLeft, Flame, MapPin, Navigation, Radio, ShieldCheck, MessageCircle } from 'lucide-react';
 
-const estados = [
-  { value: 'EN CAMINO', label: 'Marcar en camino', className: 'bg-blue-600 hover:bg-blue-500' },
-  { value: 'CONTROLADO', label: 'Marcar controlado', className: 'bg-amber-600 hover:bg-amber-500' }
-];
-
 export default function EmergencyController({ reporte, onBack, onActualizarEstado, onAbrirGPS, onVerChat }) {
   return (
     <aside className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-6 shadow-2xl min-h-[500px]">
@@ -34,6 +29,22 @@ export default function EmergencyController({ reporte, onBack, onActualizarEstad
       </div>
 
       <button
+        onClick={() => onActualizarEstado(reporte.id, 'EN CAMINO')}
+        disabled={reporte.estado === 'EN CAMINO'}
+        className="w-full mb-3 px-4 py-3 text-white rounded-xl font-black uppercase text-[10px] tracking-widest transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-500"
+      >
+        Marcar en camino
+      </button>
+
+      <button
+        onClick={() => onActualizarEstado(reporte.id, 'PENDIENTE')}
+        disabled={reporte.estado === 'PENDIENTE'}
+        className="w-full mb-3 px-4 py-3 text-red-400 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 rounded-xl font-black uppercase text-[10px] tracking-widest transition-colors disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      >
+        Descartar ruta y dejar Pendiente
+      </button>
+
+      <button
         onClick={() => onAbrirGPS(reporte.latitud, reporte.longitud)}
         className="w-full mb-3 px-4 py-3 bg-slate-950 hover:bg-slate-800 border border-slate-700 text-white rounded-xl font-black uppercase text-[10px] tracking-widest transition-colors flex items-center justify-center gap-2"
       >
@@ -47,18 +58,13 @@ export default function EmergencyController({ reporte, onBack, onActualizarEstad
         <MessageCircle size={14} /> Ver Chat Comunitario
       </button>
 
-      <div className="space-y-2">
-        {estados.map((estado) => (
-          <button
-            key={estado.value}
-            onClick={() => onActualizarEstado(reporte.id, estado.value)}
-            disabled={reporte.estado === estado.value}
-            className={`w-full px-4 py-3 text-white rounded-xl font-black uppercase text-[10px] tracking-widest transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${estado.className}`}
-          >
-            {estado.label}
-          </button>
-        ))}
-      </div>
+      <button
+        onClick={() => onActualizarEstado(reporte.id, 'CONTROLADO')}
+        disabled={reporte.estado === 'CONTROLADO'}
+        className="w-full px-4 py-3 text-white rounded-xl font-black uppercase text-[10px] tracking-widest transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-amber-600 hover:bg-amber-500"
+      >
+        Marcar controlado
+      </button>
     </aside>
   );
 }

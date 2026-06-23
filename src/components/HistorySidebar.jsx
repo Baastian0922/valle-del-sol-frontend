@@ -28,10 +28,17 @@ const HistorySidebar = ({ historial, onSelect, compact = false }) => {
             <button 
               key={rep.id || index} 
               onClick={() => onSelect(rep)}
-              className="w-full bg-slate-950/40 border border-slate-800/50 p-4 rounded-2xl flex gap-4 items-start border-l-4 hover:bg-slate-800 transition-all text-left group"
-              style={{ borderLeftColor: style.borderColor }}
+              className="w-full bg-slate-950/40 p-4 rounded-2xl flex gap-4 items-start hover:bg-slate-800 transition-all text-left group relative"
             >
-              <div className={`mt-1.5 w-2.5 h-2.5 rounded-full ${style.dotClass}`}></div>
+              {/* Borde izquierdo indicador normal */}
+              <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl" style={{ backgroundColor: style.borderColor }}></div>
+              
+              {/* Borde rojo tintineante si está pendiente */}
+              {rep.estado === 'PENDIENTE' && (
+                <div className="absolute inset-0 border-[2px] border-red-500 shadow-[inset_0_0_15px_rgba(239,68,68,0.3),0_0_15px_rgba(239,68,68,0.6)] animate-pulse pointer-events-none z-10 rounded-2xl"></div>
+              )}
+
+              <div className={`mt-1.5 ml-2 w-2.5 h-2.5 rounded-full ${style.dotClass}`}></div>
               <div className="flex-1">
                 <p className="text-sm font-bold text-slate-200 group-hover:text-white transition-colors tracking-tighter">
                   {rep.titulo}

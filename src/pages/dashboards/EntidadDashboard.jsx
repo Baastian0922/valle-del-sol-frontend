@@ -13,6 +13,14 @@ import EntityListModal from '../../components/EntityListModal';
 
 import { Flame, ShieldAlert, Users, TrendingUp, CheckCircle, AlertCircle, X, Shield, Clock } from 'lucide-react';
 
+const formatCasoId = (id) => {
+  if (!id) return '';
+  const strId = String(id);
+  if (strId.startsWith('local-')) {
+    return `CASO-${strId.slice(-4)}`;
+  }
+  return `CASO-${strId.padStart(3, '0')}`;
+};
 
 export default function EntidadDashboard() {
   const { user, usuarios = [] } = useAuth();
@@ -158,6 +166,11 @@ export default function EntidadDashboard() {
         if (casosEnCamino.some(c => c.id === r.id)) return { ...r, estado: 'PENDIENTE' };
         return r;
       }));
+      setTodosLosReportes(prev => prev.map(r => {
+        if (r.id === id) return { ...r, estado: nuevoEstado };
+        if (casosEnCamino.some(c => c.id === r.id)) return { ...r, estado: 'PENDIENTE' };
+        return r;
+      }));
       setReporteSeleccionado(prev => prev?.id === id ? { ...prev, estado: nuevoEstado } : prev);
       mostrarToast(`Unidad despachada al caso seleccionado.`, "info");
       return;
@@ -179,11 +192,13 @@ export default function EntidadDashboard() {
 
     if (nuevoEstado === 'RESUELTO') {
       setHistorial(prev => prev.filter(r => r.id !== id));
+      setTodosLosReportes(prev => prev.map(r => r.id === id ? { ...r, estado: nuevoEstado } : r));
       setSelectedCoords(null);
       setReporteSeleccionado(null);
       mostrarToast("Emergencia finalizada y cerrada con éxito.", "success");
     } else {
       setHistorial(prev => prev.map(r => r.id === id ? { ...r, estado: nuevoEstado } : r));
+      setTodosLosReportes(prev => prev.map(r => r.id === id ? { ...r, estado: nuevoEstado } : r));
       setReporteSeleccionado(prev => prev?.id === id ? { ...prev, estado: nuevoEstado } : prev);
       mostrarToast(`Estado de la emergencia actualizado a: ${nuevoEstado}`, "info");
     }
@@ -211,12 +226,13 @@ export default function EntidadDashboard() {
     serviceLevelBg = "bg-lime-400/10";
   }
 
-  // Caso más antiguo sin resolver
+  // Caso más antiguo sin resolver ni controlado para la tarjeta de Tardíos
   const activeAlerts = todosLosReportes.filter(r => r.estado !== 'RESUELTO');
+  const tardiosAlerts = todosLosReportes.filter(r => r.estado !== 'RESUELTO' && r.estado !== 'CONTROLADO');
   let oldestAlert = null;
   let tiempoTranscurrido = "";
-  if (activeAlerts.length > 0) {
-    oldestAlert = activeAlerts.reduce((oldest, current) => {
+  if (tardiosAlerts.length > 0) {
+    oldestAlert = tardiosAlerts.reduce((oldest, current) => {
       const tOldest = new Date(oldest.fechaCreacion || oldest.fecha || 0).getTime();
       const tCurrent = new Date(current.fechaCreacion || current.fecha || 0).getTime();
       if (isNaN(tOldest)) return current;
@@ -239,10 +255,52 @@ export default function EntidadDashboard() {
     }
   }
 
+  const playAlertSound = useCallback(() => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioContext();
+      
+      const playTone = (freq, type, startTime, duration) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, startTime);
+        
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(0.1, startTime + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+      };
+
+      const now = ctx.currentTime;
+      // Sonido estilo "Alerta de Despacho" (Doble tono corto, urgente pero suave)
+      playTone(750, 'triangle', now, 0.4);
+      playTone(750, 'triangle', now + 0.15, 0.4);
+    } catch (e) {
+      // Ignorar si el navegador bloquea el autoplay
+    }
+  }, []);
+
+  useEffect(() => {
+    let interval;
+    if (oldestAlert && oldestAlert.estado === 'PENDIENTE') {
+      playAlertSound();
+      interval = setInterval(playAlertSound, 4000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [oldestAlert?.id, oldestAlert?.estado, playAlertSound]);
+
   const handleFocusOldest = (alert) => {
     if (alert) {
       abrirDetalleReporte(alert);
-      mostrarToast(`Enfocado caso más antiguo #${alert.id}`, "info");
+      mostrarToast(`Enfocado caso más antiguo ${formatCasoId(alert.id)}`, "info");
     }
   };
 
@@ -285,12 +343,13 @@ export default function EntidadDashboard() {
     },
     {
       label: "Casos Más Tardíos",
-      value: oldestAlert ? `Caso #${oldestAlert.id}` : 'Al Día',
-      icon: <Clock size={20} className={oldestAlert ? "animate-bounce" : ""} />,
-      color: oldestAlert ? "text-amber-500" : "text-emerald-500",
-      bg: oldestAlert ? "bg-amber-500/10" : "bg-emerald-500/10",
-      secondaryText: oldestAlert ? `${tiempoTranscurrido} - Sin atender` : 'Sin alertas pendientes',
-      onClick: oldestAlert ? () => handleFocusOldest(oldestAlert) : undefined
+      value: oldestAlert ? formatCasoId(oldestAlert.id) : 'Al Día',
+      icon: <Clock size={20} className={oldestAlert && oldestAlert.estado === 'PENDIENTE' ? "animate-bounce" : ""} />,
+      color: oldestAlert && oldestAlert.estado === 'PENDIENTE' ? "text-red-500" : (oldestAlert ? "text-amber-500" : "text-emerald-500"),
+      bg: oldestAlert && oldestAlert.estado === 'PENDIENTE' ? "bg-red-500/10" : (oldestAlert ? "bg-amber-500/10" : "bg-emerald-500/10"),
+      secondaryText: oldestAlert ? `${tiempoTranscurrido} - ${oldestAlert.estado}` : 'Sin alertas pendientes',
+      onClick: oldestAlert ? () => handleFocusOldest(oldestAlert) : undefined,
+      pulseBorder: !!(oldestAlert && oldestAlert.estado === 'PENDIENTE')
     },
     {
       label: "Entidades Registradas",
