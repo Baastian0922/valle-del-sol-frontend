@@ -110,7 +110,7 @@ export default function AdminEmergencyController({ reporte, onBack, onActualizar
                   onActualizarEstado(reporte.id, estado.value);
                 }
               }}
-              disabled={reporte.estado === estado.value}
+              disabled={reporte.estado?.startsWith(estado.value)}
               className={`w-full px-4 py-1.5 rounded-lg font-black uppercase text-[8.5px] tracking-widest transition-all disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${estado.className}`}
             >
               {estado.value === 'RESUELTO' && <CheckCircle2 size={12} />}
@@ -122,7 +122,7 @@ export default function AdminEmergencyController({ reporte, onBack, onActualizar
 
           {userName && (
             <button
-              onClick={() => onActualizarEstado(reporte.id, `EN CAMINO (${userName})`)}
+              onClick={() => onActualizarEstado(reporte.id, `EN CAMINO - ENTIDAD: ${userName.toUpperCase()}`)}
               disabled={reporte.estado?.startsWith('EN CAMINO')}
               className="w-full px-4 py-1.5 rounded-lg font-black uppercase text-[8.5px] tracking-widest transition-all disabled:opacity-20 disabled:cursor-not-allowed flex items-center justify-center gap-2 bg-cyan-600/20 hover:bg-cyan-600 text-cyan-400 hover:text-white border border-cyan-600/30"
             >

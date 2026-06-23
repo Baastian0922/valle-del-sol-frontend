@@ -33,8 +33,8 @@ const HistorySidebar = ({ historial, onSelect, compact = false }) => {
               {/* Borde izquierdo indicador normal */}
               <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl" style={{ backgroundColor: style.borderColor }}></div>
               
-              {/* Borde rojo tintineante si está pendiente */}
-              {rep.estado === 'PENDIENTE' && (
+              {/* Borde rojo tintineante si está pendiente o nuevo */}
+              {(rep.estado === 'PENDIENTE' || rep.estado === 'NUEVO') && (
                 <div className="absolute inset-0 border-[2px] border-red-500 shadow-[inset_0_0_15px_rgba(239,68,68,0.3),0_0_15px_rgba(239,68,68,0.6)] animate-pulse pointer-events-none z-10 rounded-2xl"></div>
               )}
 

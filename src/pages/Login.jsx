@@ -4,7 +4,7 @@ import { Flame, Lock, ArrowRight, AlertCircle, Mail, ShieldCheck } from 'lucide-
 
 // ── Firebase ──────────────────────────────────────────────────────────────────
 import { auth, db } from '../services/firebase-config';
-import { sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
+import { sendPasswordResetEmail, signInWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 
 // ── Constantes de validación ──────────────────────────────────────────────────
@@ -53,6 +53,7 @@ function Login() {
   const [cargando, setCargando] = useState(false);
   const [enviandoRecuperacion, setEnviandoRecuperacion] = useState(false);
   const [modoRecuperacion, setModoRecuperacion] = useState(false);
+  const [usuarioNoVerificado, setUsuarioNoVerificado] = useState(null);
 
   const formularioBloqueado = cargando || enviandoRecuperacion;
 
@@ -74,6 +75,7 @@ function Login() {
     e.preventDefault();
     setError('');
     setMensajeExito('');
+    setUsuarioNoVerificado(null);
 
     if (!email.trim()) {
       setError('Por favor, ingresa tu correo electrónico.');
@@ -110,14 +112,24 @@ function Login() {
       }
 
       const datos = docSnap.data();
+      const rawRol = datos?.rol || datos?.role || '';
+      const rolNormalizado = rawRol.toLowerCase().trim();
+
+      // Exigir verificación de correo (excepto para administradores/staff preexistentes)
+      if (rolNormalizado !== 'staff' && rolNormalizado !== 'admin') {
+        if (!credencial.user.emailVerified) {
+          setUsuarioNoVerificado(credencial.user);
+          setError('Tu cuenta aún no está verificada. Revisa tu bandeja de entrada y haz clic en el enlace de confirmación.');
+          setCargando(false);
+          return;
+        }
+      }
 
       if (datos?.active === false) {
         setError('Tu cuenta de respondedor oficial se encuentra en revisión. El Administrador de la Municipalidad debe validar y aprobar tu solicitud antes de ingresar.');
         await auth.signOut();
         return;
       }
-      const rawRol = datos?.rol || datos?.role || '';
-      const rolNormalizado = rawRol.toLowerCase().trim();
 
       if (!rolNormalizado || !rutaPorRol[rolNormalizado]) {
         setError('Rol de usuario no reconocido. Contacta al administrador municipal.');
@@ -179,6 +191,30 @@ function Login() {
     }
   };
 
+  // ── Reenviar Correo de Verificación ───────────────────────────────────────
+  const handleReenviarVerificacion = async () => {
+    if (!usuarioNoVerificado) return;
+    setError('');
+    setMensajeExito('');
+    setCargando(true);
+    try {
+      auth.languageCode = 'es';
+      await sendEmailVerification(usuarioNoVerificado);
+      setMensajeExito('¡Correo de verificación reenviado! Revisa tu bandeja de entrada y la carpeta de spam.');
+      setUsuarioNoVerificado(null);
+      await auth.signOut();
+    } catch (err) {
+      console.error(">>> ERROR REENVIAR FIREBASE:", err);
+      if (err.code === 'auth/too-many-requests') {
+        setError('Has enviado demasiadas solicitudes recientes. Espera unos minutos.');
+      } else {
+        setError('Ocurrió un error al reenviar el correo. Inténtalo más tarde.');
+      }
+    } finally {
+      setCargando(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 relative overflow-hidden">
 
@@ -215,10 +251,23 @@ function Login() {
           {error && (
             <div
               role="alert"
-              className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl flex items-start gap-3 text-xs font-semibold mb-6"
+              className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl flex flex-col gap-3 text-xs font-semibold mb-6"
             >
-              <AlertCircle size={16} className="mt-0.5 shrink-0" />
-              <span>{error}</span>
+              <div className="flex items-start gap-3">
+                <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                <span>{error}</span>
+              </div>
+              {usuarioNoVerificado && (
+                <button
+                  type="button"
+                  onClick={handleReenviarVerificacion}
+                  disabled={cargando}
+                  className="mt-2 w-full bg-red-600/20 hover:bg-red-600/40 text-red-300 py-2 rounded-lg font-bold uppercase tracking-wider transition-all disabled:opacity-50 flex justify-center items-center gap-2"
+                >
+                  <Mail size={14} />
+                  Reenviar correo de confirmación
+                </button>
+              )}
             </div>
           )}
 

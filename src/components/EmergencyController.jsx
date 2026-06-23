@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArrowLeft, Flame, MapPin, Navigation, Radio, ShieldCheck, MessageCircle } from 'lucide-react';
 
-export default function EmergencyController({ reporte, onBack, onActualizarEstado, onAbrirGPS, onVerChat }) {
+export default function EmergencyController({ reporte, onBack, onActualizarEstado, onAbrirGPS, onVerChat, userName }) {
   return (
     <aside className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-6 shadow-2xl min-h-[500px]">
       <div className="flex items-center gap-3 pb-5 border-b border-slate-800">
@@ -29,8 +29,8 @@ export default function EmergencyController({ reporte, onBack, onActualizarEstad
       </div>
 
       <button
-        onClick={() => onActualizarEstado(reporte.id, 'EN CAMINO')}
-        disabled={reporte.estado === 'EN CAMINO'}
+        onClick={() => onActualizarEstado(reporte.id, userName ? `EN CAMINO - ENTIDAD: ${userName.toUpperCase()}` : 'EN CAMINO')}
+        disabled={reporte.estado?.startsWith('EN CAMINO')}
         className="w-full mb-3 px-4 py-3 text-white rounded-xl font-black uppercase text-[10px] tracking-widest transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-500"
       >
         Marcar en camino
@@ -59,8 +59,8 @@ export default function EmergencyController({ reporte, onBack, onActualizarEstad
       </button>
 
       <button
-        onClick={() => onActualizarEstado(reporte.id, 'CONTROLADO')}
-        disabled={reporte.estado === 'CONTROLADO'}
+        onClick={() => onActualizarEstado(reporte.id, userName ? `CONTROLADO - POR: ${userName.toUpperCase()}` : 'CONTROLADO')}
+        disabled={reporte.estado?.startsWith('CONTROLADO')}
         className="w-full px-4 py-3 text-white rounded-xl font-black uppercase text-[10px] tracking-widest transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-amber-600 hover:bg-amber-500"
       >
         Marcar controlado
